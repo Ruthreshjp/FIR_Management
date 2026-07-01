@@ -1,0 +1,82 @@
+[
+  {
+    "offense": "Theft",
+    "ipc_section": "IPC Section 379",
+    "bns_section": "BNS Section 303",
+    "keywords": ["theft", "steal", "stolen", "rob", "snatch", "pickpocket", "bike", "mobile", "wallet", "money", "property"],
+    "description": "Theft. Whosoever commits theft shall be punished with imprisonment. Mapped from IPC Section 379 to BNS Section 303.",
+    "justification": "Dishonest removal of movable property from the possession of a person without consent."
+  },
+  {
+    "offense": "Cheating and Dishonesty",
+    "ipc_section": "IPC Section 420",
+    "bns_section": "BNS Section 318",
+    "keywords": ["cheat", "cheating", "fraud", "scam", "deceive", "online transfer", "fake", "money transfer", "forged", "duplicate", "owner", "deposit"],
+    "description": "Cheating and dishonestly inducing delivery of property. Mapped from IPC Section 420 to BNS Section 318.",
+    "justification": "Dishonest inducement leading to the transfer of money or property under false representations."
+  },
+  {
+    "offense": "Murder",
+    "ipc_section": "IPC Section 302",
+    "bns_section": "BNS Section 103",
+    "keywords": ["murder", "kill", "dead", "death", "stab", "shoot", "homicide", "strangle"],
+    "description": "Punishment for murder. Mapped from IPC Section 302 to BNS Section 103.",
+    "justification": "Causing death with the intention of causing death or bodily injury likely to cause death."
+  },
+  {
+    "offense": "Attempt to Murder",
+    "ipc_section": "IPC Section 307",
+    "bns_section": "BNS Section 109",
+    "keywords": ["attempt to murder", "murder attempt", "assault with intent to kill", "attacked with knife", "shot at", "stabbed but survived"],
+    "description": "Attempt to murder. Mapped from IPC Section 307 to BNS Section 109.",
+    "justification": "Doing an act with such intention or knowledge that if it caused death, the offender would be guilty of murder."
+  },
+  {
+    "offense": "Criminal Trespass",
+    "ipc_section": "IPC Section 447",
+    "bns_section": "BNS Section 329",
+    "keywords": ["trespass", "trespassing", "broke into", "gate crash", "illegal entry", "entered house", "property trespass"],
+    "description": "Punishment for criminal trespass. Mapped from IPC Section 447 to BNS Section 329.",
+    "justification": "Entering onto property in the possession of another with intent to commit an offense or intimidate."
+  },
+  {
+    "offense": "Criminal Breach of Trust",
+    "ipc_section": "IPC Section 406",
+    "bns_section": "BNS Section 316",
+    "keywords": ["breach of trust", "embezzled", "misappropriation", "trusted", "entrusted", "withheld funds", "stole deposit"],
+    "description": "Punishment for criminal breach of trust. Mapped from IPC Section 406 to BNS Section 316.",
+    "justification": "Dishonest misappropriation of property entrusted to a person's custody or care."
+  },
+  {
+    "offense": "Criminal Intimidation",
+    "ipc_section": "IPC Section 506",
+    "bns_section": "BNS Section 351",
+    "keywords": ["threat", "threatened", "abuse", "intimidate", "blackmail", "vulgar words", "abusive", "break legs", "warned"],
+    "description": "Punishment for criminal intimidation. Mapped from IPC Section 506 to BNS Section 351.",
+    "justification": "Threatening a person with injury to their person, reputation, or property to cause alarm."
+  },
+  {
+    "offense": "Voluntarily Causing Hurt",
+    "ipc_section": "IPC Section 323",
+    "bns_section": "BNS Section 115",
+    "keywords": ["hurt", "injury", "beaten", "hit", "punch", "slap", "wound", "injured", "assaulted"],
+    "description": "Punishment for voluntarily causing hurt. Mapped from IPC Section 323 to BNS Section 115.",
+    "justification": "Doing any act with the intention of causing hurt to any person, causing bodily pain, disease, or infirmity."
+  },
+  {
+    "offense": "Outraging Modesty of Women",
+    "ipc_section": "IPC Section 354",
+    "bns_section": "BNS Section 74",
+    "keywords": ["outrage modesty", "harass", "molest", "sexual harassment", "abuse woman", "eve teasing", "groped", "misbehaved"],
+    "description": "Assault or criminal force to woman with intent to outrage her modesty. Mapped from IPC Section 354 to BNS Section 74.",
+    "justification": "Assaulting or using criminal force against a woman intending to outrage or knowing it is likely to outrage her modesty."
+  },
+  {
+    "offense": "Cruelty by Husband or Relatives",
+    "ipc_section": "IPC Section 498A",
+    "bns_section": "BNS Section 85",
+    "keywords": ["dowry", "cruelty", "harassment by husband", "husband abuse", "in-laws cruelty", "torture"],
+    "description": "Husband or relative of husband of a woman subjecting her to cruelty. Mapped from IPC Section 498A to BNS Section 85.",
+    "justification": "Subjecting a married woman to willful conduct of such nature as is likely to drive her to suicide or cause grave injury."
+  }
+]

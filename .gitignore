@@ -1,0 +1,37 @@
+# ── Environment ──
+.env
+
+# ── Python ──
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# ── Streamlit ──
+.streamlit/
+
+# ── Databases (regenerated) ──
+*.db
+data/chroma_db/
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Virtual Environments ──
+venv/
+.venv/
+env/
+.env_python/
+
+# ── Output Files ──
+*.pdf

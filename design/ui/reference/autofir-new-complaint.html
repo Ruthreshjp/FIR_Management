@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoFIR — New Complaint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0F1B2D;
+    --ink-soft:#1B2B42;
+    --paper:#F7F5F0;
+    --paper-dim:#EFEBE2;
+    --line:#D8D3C8;
+    --seal:#A8362B;
+    --seal-soft:#C75C4F;
+    --slate:#5C6470;
+    --slate-light:#8B9099;
+    --gold:#9C8049;
+    --ok:#3D6B4F;
+    --white:#FFFFFF;
+    --serif: 'Source Serif 4', serif;
+    --sans: 'Inter', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background: var(--paper-dim);
+    font-family: var(--sans);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap{
+    max-width:1180px;
+    margin:0 auto;
+    padding:36px 28px 60px;
+  }
+
+  /* HEADER */
+  .page-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    margin-bottom:28px;
+    padding-bottom:20px;
+    border-bottom:1px solid var(--line);
+  }
+  .page-head .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:0.6px;
+    color:var(--slate-light);
+    margin-bottom:6px;
+  }
+  .page-head h1{
+    font-family:var(--serif);
+    font-size:26px;
+    font-weight:600;
+  }
+  .draft-id{
+    font-family:var(--mono);
+    font-size:12.5px;
+    color:var(--slate);
+    background:var(--paper);
+    border:1px solid var(--line);
+    padding:6px 12px;
+    border-radius:6px;
+  }
+
+  /* STEPPER */
+  .stepper{
+    display:flex;
+    align-items:center;
+    gap:0;
+    margin-bottom:32px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 26px;
+  }
+  .step{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex:1;
+    position:relative;
+  }
+  .step-circle{
+    width:30px;height:30px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);
+    font-size:12px;
+    font-weight:600;
+    flex-shrink:0;
+    border:1.5px solid var(--line);
+    color:var(--slate-light);
+    background:var(--paper);
+  }
+  .step.done .step-circle{
+    background:var(--ok);
+    border-color:var(--ok);
+    color:white;
+  }
+  .step.active .step-circle{
+    background:var(--seal);
+    border-color:var(--seal);
+    color:white;
+    box-shadow:0 0 0 4px rgba(168,54,43,0.15);
+  }
+  .step-label{ font-size:13px; }
+  .step-label .name{ font-weight:600; color:var(--ink); display:block; }
+  .step-label .desc{ font-size:11px; color:var(--slate-light); }
+  .step.pending .step-label .name{ color:var(--slate-light); }
+  .step-line{
+    flex:1;
+    height:1px;
+    background:var(--line);
+    margin:0 14px;
+  }
+  .step-line.done{ background:var(--ok); }
+
+  /* GRID */
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr 380px;
+    gap:24px;
+  }
+
+  .panel{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:10px;
+  }
+  .panel-head{
+    padding:18px 24px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .panel-head h3{
+    font-family:var(--serif);
+    font-size:16px;
+    font-weight:600;
+  }
+  .panel-head .hint{ font-size:11.5px; color:var(--slate-light); }
+  .panel-body{ padding:24px; }
+
+  /* COMPLAINT INPUT */
+  textarea{
+    width:100%;
+    min-height:160px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:16px;
+    font-family:var(--sans);
+    font-size:14px;
+    line-height:1.6;
+    color:var(--ink);
+    background:var(--white);
+    resize:vertical;
+  }
+  textarea:focus{
+    outline:none;
+    border-color:var(--seal);
+    box-shadow:0 0 0 3px rgba(168,54,43,0.08);
+  }
+  .input-foot{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:10px;
+  }
+  .char-count{ font-family:var(--mono); font-size:11.5px; color:var(--slate-light); }
+  .btn{
+    font-family:var(--sans);
+    font-size:13.5px;
+    font-weight:600;
+    padding:10px 20px;
+    border-radius:7px;
+    border:none;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+  }
+  .btn-primary{ background:var(--seal); color:white; }
+  .btn-primary:hover{ background:#94302A; }
+  .btn-ghost{ background:transparent; border:1px solid var(--line); color:var(--ink); }
+
+  /* EXTRACTED FACTS */
+  .fact-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    margin-top:22px;
+  }
+  .fact{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:13px 15px;
+  }
+  .fact .k{
+    font-size:10.5px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    color:var(--slate-light);
+    margin-bottom:5px;
+  }
+  .fact .v{ font-size:13.5px; font-weight:600; color:var(--ink); }
+  .fact.flag{ border-color:#D9B7BB; background:#FBF3F2; }
+  .fact.flag .v{ color:var(--seal); }
+
+  /* SECTION MATCH CARDS */
+  .match-card{
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:16px 18px;
+    margin-bottom:12px;
+    background:var(--white);
+    position:relative;
+  }
+  .match-card:last-child{ margin-bottom:0; }
+  .match-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:8px;
+  }
+  .match-act{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .act-chip{
+    font-family:var(--mono);
+    font-size:11px;
+    font-weight:700;
+    padding:3px 8px;
+    border-radius:5px;
+  }
+  .act-chip.bns{ background:#E3E8F0; color:#3A5A8C; }
+  .act-chip.ipc{ background:#EFEAE0; color:#8A6D2F; }
+  .sec-num{ font-family:var(--serif); font-weight:600; font-size:15px; }
+  .confidence{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--ok);
+    background:#E2EBE4;
+    padding:3px 8px;
+    border-radius:5px;
+  }
+  .match-title{ font-size:13.5px; font-weight:600; margin-bottom:6px; }
+  .match-reason{
+    font-size:12.5px;
+    color:var(--slate);
+    line-height:1.55;
+    border-left:2px solid var(--line);
+    padding-left:10px;
+  }
+
+  /* RIGHT RAIL */
+  .agent-status{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:11px 14px;
+    border-radius:8px;
+    background:var(--white);
+    border:1px solid var(--line);
+    margin-bottom:10px;
+  }
+  .agent-status:last-child{ margin-bottom:0; }
+  .agent-dot{ width:8px;height:8px;border-radius:50%; flex-shrink:0; }
+  .agent-dot.done{ background:var(--ok); }
+  .agent-dot.active{ background:var(--seal); box-shadow:0 0 0 4px rgba(168,54,43,0.15); animation:pulse 1.6s infinite; }
+  .agent-dot.pending{ background:var(--line); }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+  .agent-info .name{ font-size:12.5px; font-weight:600; }
+  .agent-info .task{ font-size:11px; color:var(--slate-light); }
+
+  .preview-box{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:18px;
+    font-family:var(--serif);
+    font-size:12.5px;
+    line-height:1.7;
+    color:var(--ink-soft);
+  }
+  .preview-box .stamp{
+    text-align:center;
+    margin-bottom:12px;
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:1px;
+    color:var(--slate-light);
+    border-bottom:1px dashed var(--line);
+    padding-bottom:10px;
+  }
+  .preview-box p{ margin-bottom:10px; }
+  .preview-box .sec-cite{
+    font-family:var(--mono);
+    font-size:11px;
+    background:var(--paper-dim);
+    padding:1px 5px;
+    border-radius:3px;
+  }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background:#C9C3B6; border-radius:8px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">NEW COMPLAINT INTAKE</div>
+      <h1>Draft a First Information Report</h1>
+    </div>
+    <div class="draft-id">DRAFT–0143 · auto-saved 09:42</div>
+  </div>
+
+  <!-- STEPPER -->
+  <div class="stepper">
+    <div class="step done">
+      <div class="step-circle">✓</div>
+      <div class="step-label"><span class="name">Intake</span><span class="desc">Facts extracted</span></div>
+    </div>
+    <div class="step-line done"></div>
+    <div class="step active">
+      <div class="step-circle">2</div>
+      <div class="step-label"><span class="name">Legal Matching</span><span class="desc">Reviewing sections</span></div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step pending">
+      <div class="step-circle">3</div>
+      <div class="step-label"><span class="name">Drafting</span><span class="desc">Awaiting approval</span></div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step pending">
+      <div class="step-circle">4</div>
+      <div class="step-label"><span class="name">Finalize</span><span class="desc">Export PDF</span></div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- LEFT: MAIN WORK AREA -->
+    <div>
+      <div class="panel" style="margin-bottom:24px;">
+        <div class="panel-head">
+          <h3>Complainant's Account</h3>
+          <span class="hint">Plain language, any detail level</span>
+        </div>
+        <div class="panel-body">
+          <textarea readonly>Yesterday night around 11 PM, someone broke the lock on my shop's back door on Anna Salai and took the cash box and two laptops. I found it this morning when I opened the shop. The lock was clearly forced — there were scratch marks near the latch. Nothing else was disturbed inside.</textarea>
+          <div class="input-foot">
+            <span class="char-count">312 characters</span>
+            <button class="btn btn-ghost">Re-run Intake</button>
+          </div>
+
+          <div class="fact-grid">
+            <div class="fact"><div class="k">Offence Type</div><div class="v">Burglary / Theft</div></div>
+            <div class="fact"><div class="k">Time of Incident</div><div class="v">Night, ~23:00</div></div>
+            <div class="fact"><div class="k">Location</div><div class="v">Anna Salai, shop premises</div></div>
+            <div class="fact"><div class="k">Entry Method</div><div class="v">Forced — lock broken</div></div>
+            <div class="fact"><div class="k">Property Involved</div><div class="v">Cash box, 2 laptops</div></div>
+            <div class="fact flag"><div class="k">Minor Involved</div><div class="v">No</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Matched Legal Sections</h3>
+          <span class="hint">Ranked by semantic + reasoning match</span>
+        </div>
+        <div class="panel-body">
+
+          <div class="match-card">
+            <div class="match-top">
+              <div class="match-act">
+                <span class="act-chip bns">BNS</span>
+                <span class="sec-num">Section 305</span>
+              </div>
+              <span class="confidence">94% match</span>
+            </div>
+            <div class="match-title">Burglary — house-breaking by night</div>
+            <div class="match-reason">Forced entry through a broken lock during night hours matches the statutory definition of house-breaking by night under this section. Corresponding IPC §457.</div>
+          </div>
+
+          <div class="match-card">
+            <div class="match-top">
+              <div class="match-act">
+                <span class="act-chip bns">BNS</span>
+                <span class="sec-num">Section 303</span>
+              </div>
+              <span class="confidence">88% match</span>
+            </div>
+            <div class="match-title">Theft</div>
+            <div class="match-reason">Movable property (cash box, laptops) was taken without consent, satisfying the dishonest taking element. Corresponding IPC §379.</div>
+          </div>
+
+          <div class="match-card">
+            <div class="match-top">
+              <div class="match-act">
+                <span class="act-chip ipc">IPC</span>
+                <span class="sec-num">Section 457</span>
+              </div>
+              <span class="confidence">82% match</span>
+            </div>
+            <div class="match-title">Lurking house-trespass by night</div>
+            <div class="match-reason">Included for reference during the IPC–BNS transition period; superseded by BNS §305 above for filing purposes.</div>
+          </div>
+
+          <div class="input-foot" style="margin-top:18px;">
+            <button class="btn btn-ghost">+ Add Section Manually</button>
+            <button class="btn btn-primary">
+              Confirm &amp; Continue to Drafting →
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT RAIL -->
+    <div>
+      <div class="panel" style="margin-bottom:20px;">
+        <div class="panel-head"><h3>Pipeline Status</h3></div>
+        <div class="panel-body">
+          <div class="agent-status">
+            <div class="agent-dot done"></div>
+            <div class="agent-info">
+              <div class="name">Intake Agent</div>
+              <div class="task">Completed in 1.8s</div>
+            </div>
+          </div>
+          <div class="agent-status">
+            <div class="agent-dot active"></div>
+            <div class="agent-info">
+              <div class="name">Legal Agent</div>
+              <div class="task">Querying ChromaDB · 3 candidates found</div>
+            </div>
+          </div>
+          <div class="agent-status">
+            <div class="agent-dot pending"></div>
+            <div class="agent-info">
+              <div class="name">Drafting Agent</div>
+              <div class="task">Waiting on confirmation</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Live Draft Preview</h3></div>
+        <div class="panel-body">
+          <div class="preview-box">
+            <div class="stamp">FIRST INFORMATION REPORT — PREVIEW</div>
+            <p><b>Case No.</b> DRAFT–0143<br><b>Station:</b> Anna Salai PS</p>
+            <p>On the night of 27 June 2026, the complainant reported that an unknown person(s) gained unauthorized entry into the complainant's shop premises on Anna Salai by forcibly breaking the rear door lock...</p>
+            <p>Offence registered under <span class="sec-cite">BNS §305</span>, <span class="sec-cite">BNS §303</span>.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

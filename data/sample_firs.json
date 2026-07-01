@@ -1,0 +1,101 @@
+[
+  {
+    "fir_number": "FIR/2026/8041",
+    "report_date": "24-06-2026 10:15",
+    "created_at": "2026-06-24T10:15:00Z",
+    "complainant_name": "Aarav Sharma",
+    "complainant_email": "aarav.sharma@example.com",
+    "police_station": "Indiranagar Police Station",
+    "district": "Bengaluru, Karnataka",
+    "complaint_text": "My phone (iPhone 14) was snatched near Indiranagar Metro Station today around 9 AM by two men on a black bike with no license plate. They sped away towards 100 Feet Road.",
+    "crime_type": "Theft / Snatching",
+    "facts": "- **Incident Date & Time:** 24-06-2026 around 9:00 AM\n- **Incident Location:** Near Indiranagar Metro Station, Bengaluru\n- **Stolen Items:** Apple iPhone 14 (valued approx Rs. 70,000)\n- **Suspect Details:** Two unidentified men riding a black motorcycle without a visible license plate.\n- **Events:** The complainant was walking near the metro station when two men on a bike approached, snatched his phone from his hand, and fled towards 100 Feet Road.",
+    "sections": "| Offense | IPC Section | BNS Section | Justification |\n| :--- | :--- | :--- | :--- |\n| Theft / Snatching | Section 379 / 356 | Section 303 / 304 | Dishonest snatching and carrying away of personal mobile phone by force. |",
+    "draft": "# FIRST INFORMATION REPORT\n*(Under Section 154 CrPC / Section 173 BNSS)*\n\n**1. District:** Bengaluru, Karnataka  \n**2. Police Station:** Indiranagar Police Station  \n**3. FIR Number:** FIR/2026/8041  \n**4. Date & Time of Report:** 24-06-2026 10:15  \n\n### Details of Complainant:\n- **Name:** Aarav Sharma\n- **Email:** aarav.sharma@example.com\n\n### Description of Offense:\n- **Offense Category:** Snatching / Theft\n- **Sections Mapped:** IPC Section 379/356, BNS Section 303/304\n\n### Statement of Facts:\nOn the morning of 24th June 2026 at approximately 09:00 AM, the informant Aarav Sharma was walking near the Indiranagar Metro Station. Two unidentified male persons riding a black motorcycle (having no registration plate) approached the informant from behind. The pillion rider forcefully snatched the Apple iPhone 14 from the informant's hand. Both suspects fled the scene on the motorcycle towards 100 Feet Road.",
+    "status": "Under Investigation",
+    "accused": [
+      {
+        "name": "Unidentified Rider 1",
+        "photo": null
+      },
+      {
+        "name": "Unidentified Rider 2",
+        "photo": null
+      }
+    ],
+    "case_notes": [
+      {
+        "timestamp": "2026-06-24T11:00:00Z",
+        "officer": "SI R. Prasad",
+        "note": "CCTV footage requested from the Metro station exit cameras. Alert sent to local beat officers."
+      }
+    ],
+    "blockchain_hash": "0x5c32890fb915e8ab3c9fef45070051de1f0de98516d0046522c0ff1a92e10a8d",
+    "complainant_photo": null
+  },
+  {
+    "fir_number": "FIR/2026/4102",
+    "report_date": "22-06-2026 14:30",
+    "created_at": "2026-06-22T14:30:00Z",
+    "complainant_name": "Meera Nair",
+    "complainant_email": "meera.nair@example.com",
+    "police_station": "Koramangala Police Station",
+    "district": "Bengaluru, Karnataka",
+    "complaint_text": "I was cheated online by a seller listing an apartment on a rental site. I transferred Rs. 45,000 as security deposit to the owner named Ramesh Gupta, but he blocked my number and the listing is gone.",
+    "crime_type": "Cyber Fraud / Cheating",
+    "facts": "- **Incident Date & Time:** 21-06-2026 online transactions\n- **Incident Location:** Digital fraud / Koramangala area\n- **Loss Amount:** Rs. 45,000 via online bank transfer\n- **Suspect Details:** Ramesh Gupta (owner profile, contact number blocked)\n- **Events:** The complainant was looking for a rental house online, contacted Ramesh Gupta, and was induced to transfer Rs. 45,000 as a deposit. The suspect subsequently blocked her and removed the listing.",
+    "sections": "| Offense | IPC Section | BNS Section | Justification |\n| :--- | :--- | :--- | :--- |\n| Cheating / Fraud | Section 420 | Section 318 | Inducing delivery of property through dishonest representation on a digital platform. |",
+    "draft": "# FIRST INFORMATION REPORT\n*(Under Section 154 CrPC / Section 173 BNSS)*\n\n**1. District:** Bengaluru, Karnataka  \n**2. Police Station:** Koramangala Police Station  \n**3. FIR Number:** FIR/2026/4102  \n**4. Date & Time of Report:** 22-06-2026 14:30  \n\n### Details of Complainant:\n- **Name:** Meera Nair\n- **Email:** meera.nair@example.com\n\n### Description of Offense:\n- **Offense Category:** Cyber Fraud / Cheating\n- **Sections Mapped:** IPC Section 420, BNS Section 318\n\n### Statement of Facts:\nThe complainant Meera Nair was searching for houses for rent on an online property portal. She came across an listing by Ramesh Gupta. The accused dishonestly induced the complainant to transfer a sum of Rs. 45,000 via UPI towards security deposit. After confirming the transfer, the accused disconnected communication, blocked the complainant, and deleted the listing.",
+    "status": "Draft",
+    "accused": [
+      {
+        "name": "Ramesh Gupta",
+        "photo": null
+      }
+    ],
+    "case_notes": [
+      {
+        "timestamp": "2026-06-22T15:00:00Z",
+        "officer": "Inspector K. Murthy",
+        "note": "Sent notice to the bank requesting details of the beneficiary account holder for Ramesh Gupta."
+      }
+    ],
+    "blockchain_hash": "0x7d284a1e9c5f8e6c3d9a0f4e2b1d5c3f6e8b7a9d0c1e2f3a4b5c6d7e8f9a0b1c",
+    "complainant_photo": null
+  },
+  {
+    "fir_number": "FIR/2026/1299",
+    "report_date": "15-06-2026 18:45",
+    "created_at": "2026-06-15T18:45:00Z",
+    "complainant_name": "Vikram Sen",
+    "complainant_email": "vikram.sen@example.com",
+    "police_station": "Whitefield Police Station",
+    "district": "Bengaluru, Karnataka",
+    "complaint_text": "My neighbor, Anil Verma, threatened me with a iron rod and abused me during a parking dispute outside my house at Whitefield. He said he would break my legs if I parked my car near his gate again.",
+    "crime_type": "Assault / Criminal Intimidation",
+    "facts": "- **Incident Date & Time:** 15-06-2026 around 5:30 PM\n- **Incident Location:** Street parking outside complainant's house, Whitefield\n- **Weapons Used:** Iron rod\n- **Suspect Details:** Anil Verma (neighbor)\n- **Events:** Parking dispute escalate into a physical confrontation. Anil Verma brought an iron rod, criminally intimidated the complainant, and used abusive language.",
+    "sections": "| Offense | IPC Section | BNS Section | Justification |\n| :--- | :--- | :--- | :--- |\n| Criminal Intimidation | Section 506 | Section 351 | Threatening physical harm while brandishing a weapon. |\n| Voluntarily Causing Hurt / Assault | Section 323 / 352 | Section 115 / 131 | Threat of force and assault with an iron rod. |",
+    "draft": "# FIRST INFORMATION REPORT\n*(Under Section 154 CrPC / Section 173 BNSS)*\n\n**1. District:** Bengaluru, Karnataka  \n**2. Police Station:** Whitefield Police Station  \n**3. FIR Number:** FIR/2026/1299  \n**4. Date & Time of Report:** 15-06-2026 18:45  \n\n### Details of Complainant:\n- **Name:** Vikram Sen\n- **Email:** vikram.sen@example.com\n\n### Description of Offense:\n- **Offense Category:** Assault / Criminal Intimidation\n- **Sections Mapped:** IPC Sections 506/323/352, BNS Sections 351/115/131\n\n### Statement of Facts:\nOn 15-06-2026 at 5:30 PM outside the complainant's residence in Whitefield, a dispute arose over parking spaces. The accused Anil Verma came onto the street armed with an iron rod. He brandished the weapon in a threatening manner, uttered vulgar abuse, and criminally threatened to cause grievous injury to the complainant.",
+    "status": "Solved",
+    "accused": [
+      {
+        "name": "Anil Verma",
+        "photo": null
+      }
+    ],
+    "case_notes": [
+      {
+        "timestamp": "2026-06-16T10:00:00Z",
+        "officer": "SI R. Prasad",
+        "note": "Accused Anil Verma was summoned to the station. Statement recorded and compromise rejected due to weapon brandishing."
+      },
+      {
+        "timestamp": "2026-06-20T16:00:00Z",
+        "officer": "SI R. Prasad",
+        "note": "Accused admitted guilt and charge sheet prepared. Weapon seized. Case marked as solved."
+      }
+    ],
+    "blockchain_hash": "0x3e4a2d8f9c1b7a6d5e0f4b3c2d1e0a8f7c9b8d6e5a4f3b2c1d0e9f8a7b6c5d4e",
+    "complainant_photo": null
+  }
+]

@@ -1,0 +1,16 @@
+[
+  {
+    "police_id": "ADMIN001",
+    "name": "Super Admin",
+    "role": "Admin",
+    "password_hash": "pbkdf2:sha256:260000$admin123$bc909ad15c9b67484df48b61cb85903b41b312781cb5c290150b0b8e727cd60e",
+    "fingerprint_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "police_id": "OFFICER001",
+    "name": "Inspector Rajesh Kumar",
+    "role": "Officer",
+    "password_hash": "pbkdf2:sha256:260000$officer123$9e8c7d6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d",
+    "fingerprint_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+]
