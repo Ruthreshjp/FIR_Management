@@ -8,3 +8,4 @@ reportlab
 python-dotenv
 chromadb
 sentence-transformers
+tf-keras
