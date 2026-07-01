@@ -40,6 +40,8 @@ def create_fir_pdf(fir_data: dict) -> bytes:
     story.append(Paragraph(f"<b>Complainant:</b> {fir_data.get('complainant_name', 'N/A')} ({fir_data.get('complainant_email', 'N/A')})", body_style))
     story.append(Paragraph(f"<b>Police Station:</b> {fir_data.get('police_station', 'N/A')}", body_style))
     story.append(Paragraph(f"<b>District/State:</b> {fir_data.get('district', 'N/A')}", body_style))
+    if fir_data.get("tx_hash"):
+        story.append(Paragraph(f"<b>Blockchain TX Hash (Integrity):</b> {fir_data['tx_hash']}", body_style))
     story.append(Spacer(1, 15))
     
     # Facts

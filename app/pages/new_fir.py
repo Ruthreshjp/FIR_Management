@@ -183,8 +183,8 @@ def show():
                 label_visibility="collapsed"
             )
 
-            # Let user save the edited version explicitly if needed
-            col_save, _ = st.columns([1, 4])
+            # Let user save or finalize
+            col_save, col_finalize, _ = st.columns([1, 2, 3])
             with col_save:
                 if st.button("Save Updates", use_container_width=True):
                     if final_record:
@@ -195,6 +195,42 @@ def show():
                             st.success("Changes saved.")
                         except Exception:
                             st.warning("Could not save to database (offline mode).")
+            with col_finalize:
+                if st.button("Finalize & Issue FIR", use_container_width=True, type="primary"):
+                    if final_record:
+                        with st.spinner("Issuing FIR via Blockchain..."):
+                            try:
+                                from app.database.connection import Database
+                                db = Database()
+                                
+                                # 1. Update draft
+                                final_record["draft"] = st.session_state["edited_draft"]
+                                db.update_fir(fir_num, {"draft": final_record["draft"]})
+                                
+                                # 2. Blockchain Recording
+                                from app.tools.blockchain_tool import record_on_blockchain
+                                tx_hash = record_on_blockchain(fir_num, final_record["draft"])
+                                final_record["tx_hash"] = tx_hash
+                                db.update_fir(fir_num, {"tx_hash": tx_hash, "status": "Under Investigation"})
+                                
+                                # 3. Generate PDF (Now with tx_hash)
+                                from app.pdf.generator import create_fir_pdf
+                                pdf_bytes = create_fir_pdf(final_record)
+                                
+                                # 4. Send Email
+                                from app.tools.email_tool import send_fir_pdf_email
+                                email_sent = send_fir_pdf_email(
+                                    final_record.get("complainant_email", ""),
+                                    final_record.get("complainant_name", "Citizen"),
+                                    fir_num,
+                                    pdf_bytes
+                                )
+                                
+                                st.success(f"FIR {fir_num} officially issued! Blockchain TX: {tx_hash}")
+                                if email_sent:
+                                    st.info(f"Email sent to {final_record.get('complainant_email', '')}")
+                            except Exception as e:
+                                st.error(f"Error finalizing FIR: {e}")
 
             st.markdown("</div></div>", unsafe_allow_html=True)
             

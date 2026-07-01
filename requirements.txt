@@ -1,0 +1,10 @@
+flask
+flask-cors
+pymongo
+certifi
+langchain-groq
+langchain-core
+reportlab
+python-dotenv
+chromadb
+sentence-transformers

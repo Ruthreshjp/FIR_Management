@@ -2,7 +2,7 @@ import os
 import json
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
-from app.retrieval.chroma_store import search_legal_sections
+from app.tools.rag_tool import search_legal_sections
 
 class LegalAgent:
     def __init__(self):
