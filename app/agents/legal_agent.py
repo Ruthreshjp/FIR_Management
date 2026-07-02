@@ -7,7 +7,7 @@ from app.tools.rag_tool import search_legal_sections
 class LegalAgent:
     def __init__(self):
         self.llm = ChatGroq(
-            model="llama3-8b-8192",
+            model=os.getenv("GROQ_MODEL", "openai/gpt-oss-20b"),
             groq_api_key=os.getenv("GROQ_API_KEY"),
             temperature=0.1
         )

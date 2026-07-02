@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom'
-import { FileText, LayoutDashboard, History, BarChart3, Scale, ShieldCheck, CheckCircle2 } from 'lucide-react'
+import { FileText, LayoutDashboard, History, BarChart3, Scale, ShieldCheck, User } from 'lucide-react'
 
 import Dashboard from './pages/Dashboard'
 import NewFIR from './pages/NewFIR'
 import CaseHistory from './pages/CaseHistory'
 import Analytics from './pages/Analytics'
+import LawBrowser from './pages/LawBrowser'
+import Profile from './pages/Profile'
+import { ProfileProvider } from './context/ProfileContext'
 
 function Sidebar() {
   const location = useLocation()
@@ -51,6 +54,12 @@ function Sidebar() {
           <ShieldCheck size={17} />
           POCSO Reference
         </Link>
+        
+        <div className="nav-label">Settings</div>
+        <Link to="/profile" className={`nav-item ${location.pathname === '/profile' ? 'active' : ''}`}>
+          <User size={17} />
+          Officer Profile
+        </Link>
       </nav>
 
       <div className="sidebar-foot">
@@ -63,19 +72,23 @@ function Sidebar() {
 
 function App() {
   return (
-    <Router>
-      <div className="app">
-        <Sidebar />
-        <main className="main">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/new" element={<NewFIR />} />
-            <Route path="/history" element={<CaseHistory />} />
-            <Route path="/analytics" element={<Analytics />} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+    <ProfileProvider>
+      <Router>
+        <div className="app">
+          <Sidebar />
+          <main className="main">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/new" element={<NewFIR />} />
+              <Route path="/history" element={<CaseHistory />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/reference" element={<LawBrowser />} />
+              <Route path="/profile" element={<Profile />} />
+            </Routes>
+          </main>
+        </div>
+      </Router>
+    </ProfileProvider>
   )
 }
 

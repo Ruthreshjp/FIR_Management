@@ -4,11 +4,19 @@ import { FileText } from 'lucide-react'
 
 export default function Dashboard() {
   const [firs, setFirs] = useState([])
+  const [summary, setSummary] = useState({ open_this_month: 0, pending_review: 0, total_sections_indexed: 0 })
 
   useEffect(() => {
     fetch('http://localhost:5000/api/firs')
       .then(res => res.json())
-      .then(data => setFirs(data))
+      .then(data => {
+        if (data.firs && data.summary) {
+          setFirs(data.firs)
+          setSummary(data.summary)
+        } else if (Array.isArray(data)) {
+          setFirs(data)
+        }
+      })
       .catch(console.error)
   }, [])
 
@@ -33,19 +41,19 @@ export default function Dashboard() {
         <div className="stat-row">
           <div className="stat">
             <div className="label">Open This Month</div>
-            <div className="value">{firs.length} <span className="delta">+12%</span></div>
+            <div className="value">{summary.open_this_month} <span className="delta">from this station</span></div>
           </div>
           <div className="stat">
             <div className="label">Pending Review</div>
-            <div className="value">{firs.filter(f => f.status === 'Draft').length} <span className="delta warn">needs action</span></div>
+            <div className="value">{summary.pending_review} <span className="delta warn">needs action</span></div>
+          </div>
+          <div className="stat">
+            <div className="label">Sections Indexed</div>
+            <div className="value">{summary.total_sections_indexed} <span className="delta">IPC & BNS</span></div>
           </div>
           <div className="stat">
             <div className="label">Avg. Draft Time</div>
             <div className="value">2.4<span style={{fontSize: '15px', fontWeight: 500, color: 'var(--slate-light)'}}>min</span></div>
-          </div>
-          <div className="stat">
-            <div className="label">Sections Indexed</div>
-            <div className="value">800</div>
           </div>
         </div>
 

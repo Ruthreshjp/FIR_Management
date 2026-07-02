@@ -10,7 +10,7 @@ class Orchestrator:
         self.legal = LegalAgent()
         self.drafting = DraftingAgent()
         
-    def generate_fir(self, complainant_name: str, complainant_email: str, police_station: str, district: str, complaint_text: str):
+    def generate_fir(self, data: dict):
         """
         Coordinates the 3 agents in sequence, manages state, and yields progress.
         Yields dictionaries with step status and finally the complete FIR record.
@@ -19,7 +19,7 @@ class Orchestrator:
         
         # 1. Intake
         yield {"agent": "Intake Agent", "type": "header", "message": "Extracting facts from complaint..."}
-        facts = self.intake.run(complaint_text)
+        facts = self.intake.run(data)
         yield {"agent": "Intake Agent", "type": "thought", "message": facts}
         
         # 2. Legal Mapping
@@ -29,24 +29,24 @@ class Orchestrator:
         
         # 3. Drafting
         yield {"agent": "Drafting Agent", "type": "header", "message": "Drafting formal FIR document..."}
-        draft = self.drafting.run(facts, sections)
+        draft = self.drafting.run(facts, sections, data)
         yield {"agent": "Drafting Agent", "type": "thought", "message": draft}
         
         # 4. Save to Database
         yield {"agent": "System", "type": "status", "message": "Saving FIR to database..."}
+        
+        # Ensure fir_record includes all the new fields from data
         fir_record = {
             "fir_number": f"FIR/{datetime.now().strftime('%Y/%m%d%H%M%S')}",
-            "complainant_name": complainant_name,
-            "complainant_email": complainant_email,
-            "police_station": police_station,
-            "district": district,
-            "complaint_text": complaint_text,
             "facts": facts,
             "sections": sections,
             "draft": draft,
             "status": "Draft",
-            "created_at": datetime.utcnow().isoformat() + "Z"
+            "created_at": datetime.now().isoformat()
         }
+        # Merge all incoming data fields into the record
+        fir_record.update(data)
+
         
         try:
             db = Database()

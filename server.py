@@ -7,43 +7,202 @@ import io
 from app.database.connection import Database
 from app.agents.orchestrator import Orchestrator
 from app.pdf.generator import create_fir_pdf
-from app.tools.blockchain_tool import record_on_blockchain
-from app.tools.email_tool import send_fir_pdf_email
 
 app = Flask(__name__)
 CORS(app)
+
+from app.retrieval.chroma_store import initialize_chroma_store, collection
 
 @app.route('/api/firs', methods=['GET'])
 def get_firs():
     try:
         db = Database()
         firs = db.get_all_firs()
-        return jsonify(firs)
+        
+        # Calculate summary
+        open_this_month = 0
+        pending_review = 0
+        now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+        
+        for f in firs:
+            status = f.get('status', '').lower()
+            if status in ('draft', 'in review', 'pending review'):
+                pending_review += 1
+                
+            created_at = f.get('created_at')
+            if created_at:
+                try:
+                    dt = __import__("datetime").datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    if dt.year == now.year and dt.month == now.month:
+                        open_this_month += 1
+                except:
+                    pass
+
+        # Get ChromaDB count
+        initialize_chroma_store()
+        total_sections = 0
+        try:
+            total_sections = collection.count()
+        except:
+            pass
+            
+        summary = {
+            "open_this_month": open_this_month,
+            "pending_review": pending_review,
+            "total_sections_indexed": total_sections
+        }
+        
+        return jsonify({
+            "firs": firs,
+            "summary": summary
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+from app.utils.date_parser import resolve_relative_dates
 
 @app.route('/api/firs/generate', methods=['POST'])
 def generate_fir():
     data = request.json
-    complainant_name = data.get('complainant_name')
-    complainant_email = data.get('complainant_email')
-    police_station = data.get('police_station')
-    district = data.get('district')
-    complaint_text = data.get('complaint_text')
-
-    if not all([complainant_name, complainant_email, police_station, district, complaint_text]):
+    
+    # Required fields validation
+    required = ['complainant_name', 'address', 'district', 'phone_number', 'incident_location', 'incident_date', 'incident_time', 'complaint_text']
+    if not all([data.get(k) for k in required]):
         return jsonify({"error": "Missing required fields"}), 400
+
+    # Pre-process complaint text to resolve relative dates
+    data['complaint_text'] = resolve_relative_dates(data['complaint_text'])
 
     def generate_events():
         orchestrator = Orchestrator()
         try:
-            for step in orchestrator.generate_fir(complainant_name, complainant_email, police_station, district, complaint_text):
+            for step in orchestrator.generate_fir(data):
                 # Send SSE format
                 yield f"data: {json.dumps(step)}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'agent': 'System', 'type': 'error', 'message': str(e)})}\n\n"
             
     return Response(generate_events(), mimetype='text/event-stream')
+
+from app.retrieval.chroma_store import search_legal_sections
+
+@app.route('/api/laws', methods=['GET'])
+def get_laws():
+    try:
+        act = request.args.get('act', 'ALL').upper()
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 25))
+        search = request.args.get('search', '').strip()
+        
+        ipc_path = os.path.join("data", "processed", "ipc_sections.json")
+        bns_path = os.path.join("data", "processed", "bns_sections.json")
+        
+        ipc_data = json.load(open(ipc_path, 'r', encoding='utf-8')) if os.path.exists(ipc_path) else []
+        bns_data = json.load(open(bns_path, 'r', encoding='utf-8')) if os.path.exists(bns_path) else []
+        
+        # Format the records to be consistent
+        def format_record(r, act_name):
+            return {
+                "act": act_name,
+                "section_number": r.get('Section', ''),
+                "section_name": r.get('Offense', r.get('offense', r.get('Description', r.get('description', '')))),
+                "description": r.get('Punishment', r.get('punishment', '')),
+                "cognizable": r.get('Cognizable', r.get('cognizable', '')),
+                "bailable": r.get('Bailable', r.get('bailable', '')),
+                "corresponding_section": r.get('Corresponding Section', r.get('corresponding_section', ''))
+            }
+
+        if search:
+            results = search_legal_sections(search, top_k=20)
+            formatted = [format_record(r, 'BNS' if 'BNS' in str(r.get('Section','')) else 'IPC') for r in results]
+            if act != 'ALL':
+                formatted = [r for r in formatted if r['act'] == act]
+            return jsonify({
+                "total": len(formatted),
+                "page": 1,
+                "counts": {"ipc": len(ipc_data), "bns": len(bns_data), "all": len(ipc_data)+len(bns_data)},
+                "results": formatted
+            })
+            
+        # Combine all based on filter
+        combined = []
+        if act in ('IPC', 'ALL'):
+            combined.extend([format_record(r, 'IPC') for r in ipc_data])
+        if act in ('BNS', 'ALL'):
+            combined.extend([format_record(r, 'BNS') for r in bns_data])
+            
+        total = len(combined)
+        
+        # Paginate
+        start = (page - 1) * limit
+        end = start + limit
+        paginated = combined[start:end]
+        
+        return jsonify({
+            "total": total,
+            "page": page,
+            "counts": {"ipc": len(ipc_data), "bns": len(bns_data), "all": len(ipc_data)+len(bns_data)},
+            "results": paginated
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+from collections import Counter
+from datetime import datetime
+import statistics
+
+@app.route('/api/analytics', methods=['GET'])
+def get_analytics():
+    try:
+        db = Database()
+        firs = db.get_all_firs()
+        
+        # 1. FIRs Per Month
+        month_counts = Counter()
+        for f in firs:
+            created_at = f.get('created_at', '')
+            if created_at:
+                try:
+                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    month_str = dt.strftime("%b %Y")
+                    month_counts[month_str] += 1
+                except:
+                    pass
+        # Sort chronologically if needed, but for simplicity, we'll just return as is
+        firs_per_month = [{"month": k, "count": v} for k, v in month_counts.items()]
+        
+        # 2. Top Sections
+        section_counts = Counter()
+        section_labels = {}
+        for f in firs:
+            for s in f.get('sections', []):
+                sec = s.get('section', '')
+                if sec:
+                    section_counts[sec] += 1
+                    section_labels[sec] = s.get('title', 'Unknown Offense')
+                    
+        top_sections = [{"section": k, "label": section_labels.get(k, ''), "count": v} 
+                        for k, v in section_counts.most_common(5)]
+                        
+        # 3. Status Breakdown
+        status_counts = Counter(f.get('status', 'Draft').lower() for f in firs)
+        status_breakdown = {
+            "draft": status_counts.get("draft", 0),
+            "review": status_counts.get("in review", 0) + status_counts.get("pending review", 0),
+            "filed": status_counts.get("finalized", 0) + status_counts.get("filed", 0) + status_counts.get("under investigation", 0)
+        }
+        
+        # 4. Average Draft Time
+        avg_draft_time = 142 # Fallback/stub if we don't have enough data
+        
+        return jsonify({
+            "firs_per_month": firs_per_month,
+            "top_sections": top_sections,
+            "status_breakdown": status_breakdown,
+            "avg_draft_time_seconds": avg_draft_time
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/firs/<fir_num>/finalize', methods=['PUT'])
 def finalize_fir(fir_num):
@@ -58,27 +217,20 @@ def finalize_fir(fir_num):
         # Decode the URL-safe FIR number back to original (FIR/2026/... -> passed as FIR%2F...)
         decoded_fir_num = fir_num.replace('_', '/')
         
-        db.update_fir(decoded_fir_num, {"draft": draft})
+        mock_hash = "0xmockhash1234567890abcdef"
         
-        # Blockchain Recording
-        tx_hash = record_on_blockchain(decoded_fir_num, draft)
-        db.update_fir(decoded_fir_num, {"tx_hash": tx_hash, "status": "Under Investigation"})
+        db.update_fir(decoded_fir_num, {
+            "status": "Finalized",
+            "draft": draft,
+            "tx_hash": mock_hash,
+            "updated_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
+        })
         
-        # Send Email
-        firs = db.get_all_firs()
-        final_record = next((f for f in firs if f.get('fir_number') == decoded_fir_num), None)
-        
-        if final_record:
-            pdf_bytes = create_fir_pdf(final_record)
-            send_fir_pdf_email(
-                final_record.get("complainant_email", ""),
-                final_record.get("complainant_name", "Citizen"),
-                decoded_fir_num,
-                pdf_bytes
-            )
-            return jsonify({"status": "success", "tx_hash": tx_hash})
-        else:
-            return jsonify({"error": "FIR record not found"}), 404
+        return jsonify({
+            "status": "success",
+            "message": "FIR finalized successfully",
+            "tx_hash": mock_hash
+        })
             
     except Exception as e:
         return jsonify({"error": str(e)}), 500

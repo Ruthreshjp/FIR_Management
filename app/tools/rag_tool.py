@@ -2,7 +2,6 @@ import os
 import json
 import logging
 import re
-from app.config import settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
