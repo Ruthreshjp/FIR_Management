@@ -67,7 +67,8 @@ except ImportError:
 
 class SemanticRAG:
     def __init__(self):
-        self.dataset_path = os.path.join(settings.DATA_DIR, "ipc_bns_dataset.json")
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.dataset_path = os.path.join(base_dir, "data", "ipc_bns_dataset.json")
         self.dataset = self.load_dataset()
         self.use_chroma = False
         

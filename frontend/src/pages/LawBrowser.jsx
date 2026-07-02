@@ -1,20 +1,29 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, Loader2 } from 'lucide-react'
+import SectionChip from '../components/SectionChip'
 
 function ExpandableDescription({ text }) {
   const [expanded, setExpanded] = useState(false)
   if (!text) return null
   
-  const isLong = text.length > 150
-  const displayText = expanded ? text : text.substring(0, 150) + (isLong ? '...' : '')
-  
   return (
-    <div style={{fontSize: '13px', lineHeight: '1.6', color: 'var(--slate)', marginTop: '8px'}}>
-      {displayText}
-      {isLong && (
+    <div>
+      <div style={{
+        fontFamily: 'var(--sans)',
+        fontSize: '13px',
+        lineHeight: 1.6,
+        color: 'var(--text-secondary)',
+        display: '-webkit-box',
+        WebkitLineClamp: expanded ? 'unset' : 3,
+        WebkitBoxOrient: 'vertical',
+        overflow: 'hidden'
+      }}>
+        {text}
+      </div>
+      {text.length > 120 && (
         <span 
           onClick={() => setExpanded(!expanded)}
-          style={{color: 'var(--brand)', cursor: 'pointer', marginLeft: '8px', fontWeight: '500'}}
+          style={{color: 'var(--saffron)', cursor: 'pointer', fontSize: '13px', fontWeight: '500', display: 'inline-block', marginTop: '4px'}}
         >
           {expanded ? 'Show less' : 'Show more'}
         </span>
@@ -72,179 +81,185 @@ export default function LawBrowser() {
     }, 400)
   }
 
-  const clearSearch = () => {
-    setSearch('')
-    setPage(1)
-    fetchLaws(filter, 1, '')
-  }
-
   const totalPages = Math.ceil(data.total / 25) || 1
   const hasSearch = search.trim().length > 0
 
+  const FilterPill = ({ label, act, count }) => {
+    const active = filter === act
+    return (
+      <button 
+        onClick={() => {setFilter(act); setPage(1)}}
+        style={{
+          height: '40px',
+          minWidth: '100px',
+          borderRadius: '20px',
+          border: active ? '1px solid var(--india-blue)' : '1px solid var(--border)',
+          background: active ? 'var(--india-blue)' : 'var(--surface)',
+          color: active ? 'white' : 'var(--text-secondary)',
+          fontFamily: 'var(--sans)',
+          fontSize: '14px',
+          fontWeight: 600,
+          cursor: 'pointer',
+          padding: '0 20px',
+          transition: 'all 150ms ease'
+        }}
+      >
+        {label} &nbsp;·&nbsp; {count}
+      </button>
+    )
+  }
+
   return (
-    <div className="page-container" style={{maxWidth: '1000px', margin: '0 auto'}}>
-      <div className="topbar" style={{marginBottom: '24px'}}>
-        <div className="topbar-left">
-          <h1 style={{fontFamily: 'var(--serif)', fontSize: '28px', margin: 0, color: 'var(--foreground)'}}>Legal Reference</h1>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '40px' }}>
+      
+      {/* TOP FILTER ROW */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <FilterPill label="All" act="ALL" count={data.counts.all} />
+          <FilterPill label="IPC" act="IPC" count={data.counts.ipc} />
+          <FilterPill label="BNS" act="BNS" count={data.counts.bns} />
+        </div>
+        
+        <div style={{ position: 'relative', width: '320px' }}>
+          <input 
+            type="text" 
+            placeholder="Search sections, offenses..." 
+            value={search}
+            onChange={handleSearchChange}
+            style={{ paddingLeft: '40px', borderRadius: '20px', marginBottom: 0 }}
+          />
+          {isSearching ? (
+            <Loader2 size={18} className="spin" style={{ position: 'absolute', left: '14px', top: '13px', color: 'var(--text-muted)' }} />
+          ) : (
+            <Search size={18} style={{ position: 'absolute', left: '14px', top: '13px', color: 'var(--text-muted)' }} />
+          )}
         </div>
       </div>
 
-      <div className="panel" style={{marginBottom: '24px', overflow: 'hidden'}}>
-        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: 'var(--paper)', borderBottom: '1px solid var(--line)'}}>
-          
-          <div style={{display: 'flex', gap: '8px'}}>
-            <button 
-              className={`btn ${filter === 'ALL' ? 'btn-primary' : 'btn-ghost'}`} 
-              onClick={() => {setFilter('ALL'); setPage(1)}}
-              style={{padding: '6px 12px', fontSize: '13px'}}
-            >
-              All ({data.counts.all})
-            </button>
-            <button 
-              className={`btn ${filter === 'IPC' ? 'btn-primary' : 'btn-ghost'}`} 
-              onClick={() => {setFilter('IPC'); setPage(1)}}
-              style={{padding: '6px 12px', fontSize: '13px'}}
-            >
-              IPC ({data.counts.ipc})
-            </button>
-            <button 
-              className={`btn ${filter === 'BNS' ? 'btn-primary' : 'btn-ghost'}`} 
-              onClick={() => {setFilter('BNS'); setPage(1)}}
-              style={{padding: '6px 12px', fontSize: '13px'}}
-            >
-              BNS ({data.counts.bns})
-            </button>
-          </div>
-
-          <div style={{position: 'relative', width: '300px'}}>
-            <input 
-              type="text" 
-              placeholder="Search sections, offenses..." 
-              value={search}
-              onChange={handleSearchChange}
-              style={{paddingLeft: '36px', marginBottom: 0, width: '100%', height: '36px', borderRadius: '18px'}}
-            />
-            {isSearching ? (
-              <Loader2 size={16} className="spin" style={{position: 'absolute', left: '12px', top: '10px', color: 'var(--slate)'}} />
-            ) : (
-              <Search size={16} style={{position: 'absolute', left: '12px', top: '10px', color: 'var(--slate)'}} />
-            )}
-          </div>
+      {hasSearch && (
+        <div style={{ marginBottom: '24px', fontSize: '14px', color: 'var(--text-muted)' }}>
+          {data.results.length} results for "{search}"
         </div>
+      )}
 
-        <div className="panel-body" style={{padding: '20px', background: 'var(--body)'}}>
-          
-          {hasSearch && (
-            <div style={{marginBottom: '16px', fontSize: '14px', color: 'var(--slate)'}}>
-              {data.results.length} results for "{search}"
-            </div>
-          )}
-
-          {!loading && data.results.length === 0 ? (
-            <div style={{textAlign: 'center', padding: '60px 20px'}}>
-              <h3 style={{color: 'var(--slate)', marginBottom: '12px'}}>No sections matched your search</h3>
-              {hasSearch && (
-                <button className="btn btn-ghost" onClick={clearSearch}>Clear search</button>
+      {/* SECTION CARDS GRID */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(500px, 1fr))', gap: '24px', marginBottom: '40px' }}>
+        {data.results.map((item, index) => (
+          <div key={index} className="card" style={{ padding: '24px' }}>
+            
+            {/* Top Row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+              <div>
+                <SectionChip act={item.act} sectionNumber={item.section_number.replace(/IPC|BNS/i, '').trim()} />
+                <div style={{ fontFamily: 'var(--serif)', fontSize: '20px', fontWeight: 700, color: 'var(--india-blue)', marginTop: '8px' }}>
+                  § {item.section_number.replace(/IPC|BNS/i, '').trim()}
+                </div>
+              </div>
+              {item.cognizable && item.cognizable !== 'N/A' && (
+                <div style={{
+                  background: item.cognizable.toLowerCase().includes('non') ? 'var(--danger)' : 'var(--green-ok)',
+                  color: 'white',
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  fontSize: '11px',
+                  fontFamily: 'var(--sans)',
+                  fontWeight: 600,
+                  textTransform: 'uppercase'
+                }}>
+                  {item.cognizable}
+                </div>
               )}
             </div>
-          ) : (
-            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-              {data.results.map((item, index) => (
-                <div key={index} className="panel" style={{padding: '20px'}}>
-                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px'}}>
-                    <div>
-                      <span className={`act-chip ${item.act === 'BNS' ? 'bns' : 'ipc'}`} style={{marginBottom: '8px', display: 'inline-block'}}>
-                        {item.act}
-                      </span>
-                      <h2 style={{fontFamily: 'var(--serif)', fontSize: '22px', margin: '0 0 4px 0', color: 'var(--foreground)'}}>
-                        {item.section_number}
-                      </h2>
-                      <div style={{fontWeight: '600', color: 'var(--foreground)', fontSize: '15px'}}>{item.section_name}</div>
-                    </div>
-                    {item.corresponding_section && item.corresponding_section !== 'N/A' && (
-                      <div style={{fontSize: '12px', padding: '4px 8px', background: 'var(--paper-dim)', border: '1px solid var(--line)', borderRadius: '4px', color: 'var(--slate)'}}>
-                        ↔ {item.act === 'IPC' ? 'BNS' : 'IPC'} {item.corresponding_section}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <ExpandableDescription text={item.description} />
-                  
-                  {(item.cognizable || item.bailable) && (
-                    <div style={{display: 'flex', gap: '8px', marginTop: '16px'}}>
-                      {item.cognizable && item.cognizable !== 'N/A' && (
-                        <span style={{
-                          fontSize: '11px', 
-                          fontWeight: '600',
-                          padding: '4px 8px', 
-                          borderRadius: '4px', 
-                          textTransform: 'uppercase',
-                          background: item.cognizable.toLowerCase().includes('non') ? 'var(--paper-dim)' : '#e6f4ea',
-                          color: item.cognizable.toLowerCase().includes('non') ? 'var(--slate)' : '#1e8e3e'
-                        }}>
-                          {item.cognizable}
-                        </span>
-                      )}
-                      {item.bailable && item.bailable !== 'N/A' && (
-                        <span style={{
-                          fontSize: '11px', 
-                          fontWeight: '600',
-                          padding: '4px 8px', 
-                          borderRadius: '4px', 
-                          textTransform: 'uppercase',
-                          background: 'var(--paper-dim)',
-                          color: 'var(--slate)'
-                        }}>
-                          {item.bailable}
-                        </span>
-                      )}
-                    </div>
-                  )}
+            
+            {/* Middle */}
+            <div style={{ fontFamily: 'var(--sans)', fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+              {item.section_name}
+            </div>
+            
+            <ExpandableDescription text={item.description} />
+            
+            {/* Bottom Row */}
+            <div style={{ display: 'flex', gap: '12px', marginTop: '16px', alignItems: 'center' }}>
+              {item.bailable && item.bailable !== 'N/A' && (
+                <div style={{
+                  background: item.bailable.toLowerCase().includes('non') ? '#FEE2E2' : 'var(--green-light)',
+                  color: item.bailable.toLowerCase().includes('non') ? 'var(--danger)' : 'var(--green-ok)',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  textTransform: 'uppercase'
+                }}>
+                  {item.bailable}
                 </div>
-              ))}
+              )}
+              {item.corresponding_section && item.corresponding_section !== 'N/A' && (
+                <div style={{
+                  background: 'var(--india-blue-light)',
+                  color: 'var(--india-blue-mid)',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontFamily: 'var(--mono)',
+                  fontWeight: 500
+                }}>
+                  ↔ {item.act === 'IPC' ? 'BNS' : 'IPC'} {item.corresponding_section}
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Pagination (Hide during search) */}
-        {!hasSearch && totalPages > 1 && (
-          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: 'var(--paper)', borderTop: '1px solid var(--line)'}}>
-            <button 
-              className="btn btn-ghost" 
-              onClick={() => setPage(p => Math.max(1, p - 1))} 
-              disabled={page === 1}
-            >
-              ← Previous
-            </button>
-            <div style={{fontSize: '14px', color: 'var(--slate)', display: 'flex', alignItems: 'center', gap: '8px'}}>
-              Showing {(page - 1) * 25 + 1}–{Math.min(page * 25, data.total)} of {data.total}
-              <span style={{margin: '0 8px', color: 'var(--line)'}}>|</span>
-              Page 
-              <input 
-                type="number" 
-                value={page}
-                onChange={(e) => {
-                  let p = parseInt(e.target.value)
-                  if (!isNaN(p) && p >= 1 && p <= totalPages) {
-                    setPage(p)
-                  }
-                }}
-                style={{width: '60px', height: '28px', padding: '4px', margin: 0, textAlign: 'center'}}
-                min={1}
-                max={totalPages}
-              />
-              of {totalPages}
-            </div>
-            <button 
-              className="btn btn-ghost" 
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))} 
-              disabled={page === totalPages}
-            >
-              Next →
-            </button>
           </div>
-        )}
+        ))}
       </div>
+
+      {/* PAGINATION */}
+      {!hasSearch && totalPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px' }}>
+          <button 
+            className="btn btn-ghost" 
+            onClick={() => setPage(p => Math.max(1, p - 1))} 
+            disabled={page === 1}
+          >
+            Prev
+          </button>
+          
+          <div style={{ fontFamily: 'var(--sans)', fontSize: '14px', color: 'var(--text-muted)', display: 'flex', gap: '8px' }}>
+            {Array.from({length: Math.min(5, totalPages)}).map((_, i) => {
+              // Simple pagination display logic
+              let p = page
+              if (page <= 3) p = i + 1
+              else if (page >= totalPages - 2) p = totalPages - 4 + i
+              else p = page - 2 + i
+              
+              if (p < 1 || p > totalPages) return null
+
+              return (
+                <button 
+                  key={p}
+                  onClick={() => setPage(p)}
+                  style={{
+                    width: '32px', height: '32px', borderRadius: '4px', border: 'none',
+                    background: p === page ? 'var(--saffron)' : 'transparent',
+                    color: p === page ? 'white' : 'var(--text-secondary)',
+                    fontWeight: p === page ? 600 : 400,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {p}
+                </button>
+              )
+            })}
+          </div>
+
+          <button 
+            className="btn btn-ghost" 
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))} 
+            disabled={page === totalPages}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   )
 }
