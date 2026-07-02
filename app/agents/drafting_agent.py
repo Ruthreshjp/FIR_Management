@@ -33,7 +33,7 @@ class DraftingAgent:
     def run(self, facts: str, sections: str, data: dict) -> str:
         """Synthesizes facts + legal mapping + full context into FIR draft."""
         
-        id_proof_str = f"{data.get('id_proof_type', '')} - {data.get('id_proof_number', '')}".strip(" -")
+        id_proof_str = f"{data.get('complainant_id_type', '')} - {data.get('complainant_id_number', '')}".strip(" -")
         if not id_proof_str:
             id_proof_str = "None provided"
             
@@ -41,9 +41,9 @@ class DraftingAgent:
         result = chain.invoke({
             "complainant_name": data.get("complainant_name", "Unknown"),
             "id_proof": id_proof_str,
-            "complainant_address": data.get("address", "Unknown"),
-            "district": data.get("district", "Unknown"),
-            "phone_number": data.get("phone_number", "Unknown"),
+            "complainant_address": data.get("complainant_address", "Unknown"),
+            "district": data.get("complainant_city", "Unknown"),
+            "phone_number": data.get("complainant_phone", "Unknown"),
             "incident_date": data.get("incident_date", "Unknown"),
             "incident_time": data.get("incident_time", "Unknown"),
             "incident_location": data.get("incident_location", "Unknown"),

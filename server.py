@@ -66,7 +66,7 @@ def generate_fir():
     data = request.json
     
     # Required fields validation
-    required = ['complainant_name', 'address', 'district', 'phone_number', 'incident_location', 'incident_date', 'incident_time', 'complaint_text']
+    required = ['complainant_name', 'complainant_address', 'complainant_city', 'complainant_phone', 'incident_location', 'incident_date', 'incident_time', 'complaint_text']
     if not all([data.get(k) for k in required]):
         return jsonify({"error": "Missing required fields"}), 400
 
@@ -175,11 +175,15 @@ def get_analytics():
         section_counts = Counter()
         section_labels = {}
         for f in firs:
-            for s in f.get('sections', []):
-                sec = s.get('section', '')
-                if sec:
-                    section_counts[sec] += 1
-                    section_labels[sec] = s.get('title', 'Unknown Offense')
+            sections = f.get('sections', [])
+            if isinstance(sections, str):
+                continue
+            for s in sections:
+                if isinstance(s, dict):
+                    sec = s.get('section', '')
+                    if sec:
+                        section_counts[sec] += 1
+                        section_labels[sec] = s.get('title', 'Unknown Offense')
                     
         top_sections = [{"section": k, "label": section_labels.get(k, ''), "count": v} 
                         for k, v in section_counts.most_common(5)]

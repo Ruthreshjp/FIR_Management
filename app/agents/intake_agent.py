@@ -23,9 +23,9 @@ class IntakeAgent:
         
     def run(self, data: dict) -> str:
         """Extracts structured facts from the raw complaint text."""
-        witnesses_str = ", ".join([f"{w['name']} ({w['contact']})" for w in data.get('witnesses', [])]) if data.get('witnesses') else "None provided"
+        witnesses_str = ", ".join([f"{w.get('name', '')} ({w.get('phone', '')})" for w in data.get('witnesses', [])]) if data.get('witnesses') else "None provided"
         
-        id_proof_str = f"{data.get('id_proof_type', '')} - {data.get('id_proof_number', '')}".strip(" -")
+        id_proof_str = f"{data.get('complainant_id_type', '')} - {data.get('complainant_id_number', '')}".strip(" -")
         if not id_proof_str:
             id_proof_str = "None provided"
             
@@ -33,7 +33,7 @@ class IntakeAgent:
         result = chain.invoke({
             "complainant_name": data.get("complainant_name", "Unknown"),
             "id_proof": id_proof_str,
-            "complainant_address": data.get("address", "Unknown"),
+            "complainant_address": data.get("complainant_address", "Unknown"),
             "incident_date": data.get("incident_date", "Unknown"),
             "incident_time": data.get("incident_time", "Unknown"),
             "incident_location": data.get("incident_location", "Unknown"),
