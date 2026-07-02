@@ -97,20 +97,25 @@ export default function NewFIR() {
             try {
               const data = JSON.parse(dataStr)
               
-              if (data.type === 'agent_start') {
-                if (data.agent === 'IntakeAgent') setActiveAgent('intake')
-                if (data.agent === 'LegalAgent') setActiveAgent('legal')
-                if (data.agent === 'DraftingAgent') setActiveAgent('drafting')
-              }
-              
-              if (data.type === 'token') {
-                setActiveAgent('drafting') // Ensure we are on drafting if tokens arrive
-                fullDraft += data.text
-                setDraftContent(fullDraft)
-              }
-              
-              if (data.type === 'complete') {
-                setIsComplete(true)
+              if (data.agent === 'System') {
+                if (data.type === 'error') {
+                  alert("Error: " + data.message)
+                  setIsSubmitting(false)
+                } else if (data.type === 'pipeline_complete') {
+                  setIsComplete(true)
+                  if (data.fir_record && data.fir_record.draft) {
+                    setDraftContent(data.fir_record.draft)
+                  }
+                }
+              } else if (data.agent === 'Intake Agent') {
+                setActiveAgent('intake')
+              } else if (data.agent === 'Legal Agent') {
+                setActiveAgent('legal')
+              } else if (data.agent === 'Drafting Agent') {
+                setActiveAgent('drafting')
+                if (data.type === 'thought' && data.message) {
+                  setDraftContent(data.message)
+                }
               }
               
             } catch (err) {
