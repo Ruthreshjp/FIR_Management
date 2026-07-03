@@ -77,6 +77,14 @@ export default function NewFIR() {
         body: JSON.stringify(payload)
       })
 
+      if (!response.ok) {
+        const errorData = await response.json()
+        alert(`Validation Error: ${errorData.error || 'Request failed'}`)
+        setIsSubmitting(false)
+        setStep(0)
+        return
+      }
+
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       

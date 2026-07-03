@@ -439,3 +439,70 @@ textarea::placeholder {
     padding: 16px;
   }
 }
+
+/* ─── Draft Preview Markdown Styles ─── */
+.draft-preview h1,
+.draft-preview h2,
+.draft-preview h3 {
+  font-family: 'Noto Serif', serif;
+  font-weight: 700;
+  color: #0D1B2A;
+  border-bottom: 1px solid #DDE3ED;
+  padding-bottom: 4px;
+}
+.draft-preview h1 { font-size: 18px; margin: 20px 0 8px; }
+.draft-preview h2 { font-size: 16px; margin: 18px 0 6px; }
+.draft-preview h3 { font-size: 14px; margin: 16px 0 6px; }
+
+.draft-preview strong {
+  font-weight: 700;
+  color: #0D1B2A;
+}
+
+.draft-preview p {
+  font-size: 13px;
+  line-height: 1.8;
+  margin-bottom: 10px;
+  color: #4A5568;
+}
+
+.draft-preview ul,
+.draft-preview ol {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #4A5568;
+  padding-left: 20px;
+  margin-bottom: 10px;
+}
+
+.draft-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 12px 0;
+}
+
+.draft-preview td,
+.draft-preview th {
+  border: 1px solid #DDE3ED;
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.draft-preview th {
+  background: #F4F6F9;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.draft-preview tr:nth-child(even) {
+  background: #FAFAFA;
+}
+
+.draft-preview hr {
+  border: none;
+  border-top: 1px solid #DDE3ED;
+  margin: 16px 0;
+}

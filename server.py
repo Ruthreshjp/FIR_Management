@@ -67,11 +67,16 @@ def generate_fir():
     
     # Required fields validation
     required = ['complainant_name', 'complainant_address', 'complainant_city', 'complainant_phone', 'incident_location', 'incident_date', 'incident_time', 'complaint_text']
-    if not all([data.get(k) for k in required]):
-        return jsonify({"error": "Missing required fields"}), 400
+    missing = [k for k in required if not data.get(k)]
+    if missing:
+        return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
 
-    # Pre-process complaint text to resolve relative dates
-    data['complaint_text'] = resolve_relative_dates(data['complaint_text'])
+    # Parse and format the explicit incident_date
+    from datetime import datetime
+    try:
+        data['incident_date'] = datetime.strptime(data['incident_date'], "%Y-%m-%d").strftime("%d %B %Y")
+    except ValueError:
+        pass # keep as is if parsing fails
 
     def generate_events():
         orchestrator = Orchestrator()
@@ -260,4 +265,4 @@ def download_pdf(fir_num):
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    app.run(port=5000, debug=True, use_reloader=False, threaded=True)

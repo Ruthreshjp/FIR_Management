@@ -1,4 +1,5 @@
 import { Loader2, CheckCircle2, FileText, Bot, Scale } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 
 export default function AgentPipeline({ activeAgent, isComplete, draftContent }) {
   // activeAgent: 'intake' | 'legal' | 'drafting'
@@ -60,14 +61,8 @@ export default function AgentPipeline({ activeAgent, isComplete, draftContent })
           <div style={{ fontFamily: 'var(--sans)', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '16px' }}>
             Draft Preview
           </div>
-          <div style={{
-            fontFamily: 'var(--serif)',
-            fontSize: '13px',
-            lineHeight: 1.8,
-            color: 'var(--text-primary)',
-            whiteSpace: 'pre-wrap'
-          }}>
-            {draftContent}
+          <div className="draft-preview">
+            <ReactMarkdown>{draftContent}</ReactMarkdown>
           </div>
         </div>
       )}
