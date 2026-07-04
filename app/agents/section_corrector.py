@@ -50,7 +50,7 @@ def correct_sections(raw_sections, facts):
         "password shared", "pin shared", "anydesk",
         "teamviewer", "remote verification", "kyc expiry",
         "account blocked", "account frozen", "verify account",
-        "install app", "download app", "link sent"
+        "install app", "download app", "link sent", "claiming to be"
     ])
     has_physical_force = any(w in complaint_lower for w in [
         "hit", "punch", "slap", "push", "knife", "gun", "weapon",
@@ -75,7 +75,7 @@ def correct_sections(raw_sections, facts):
         original_count = len(sections)
         sections = [
             s for s in sections
-            if not (str(s.get("section_number")) in ["392", "309", "390", "391", "394", "395", "396", "179", "489A", "489B", "489C", "489D", "489E"])
+            if not (str(s.get("section_number")) in ["392", "309", "390", "391", "394", "395", "396", "179", "489A", "489B", "489C", "489D", "489E", "178", "180", "181", "182"])
         ]
         if len(sections) < original_count:
             print("[Corrector] REMOVED robbery and fake currency sections — cyber fraud detected, no physical force")
@@ -90,14 +90,14 @@ def correct_sections(raw_sections, facts):
             print("[Corrector] REMOVED robbery — no violence explicitly stated")
 
     # RULE 2: Cheating by Personation
-    if any(w in complaint_lower for w in ["impersonat", "posed as", "pretended to be", "claimed to be", "introduced himself as", "fake officer", "fake rbi", "fake police", "fake bank", "disguised as", "masquerading"]):
+    if any(w in complaint_lower for w in ["impersonat", "posing as", "pretended to be", "claimed to be", "claiming to be", "introduced himself as", "fake officer", "fake rbi", "fake police", "fake bank", "fake manager", "disguised as", "masquerading"]):
         sections.extend([
             {"act": "IPC", "section_number": "419", "offense": "Cheating by personation", "justification": "Accused impersonated another person or government official to commit fraud", "bns_equivalent": "319", "confidence": 0.88, "primary": False},
             {"act": "BNS", "section_number": "319", "offense": "Cheating by personation", "justification": "BNS equivalent of IPC 419", "confidence": 0.88, "primary": False}
         ])
 
     # RULE 3: Forgery
-    if any(w in complaint_lower for w in ["fake document", "forged", "fake letterhead", "fake id", "fabricated document", "fake stamp", "counterfeit", "fake certificate", "fake letter", "false document", "manufactured document"]):
+    if any(w in complaint_lower for w in ["fake", "forged", "fake id", "fabricated", "counterfeit", "false document"]):
         sections.extend([
             {"act": "IPC", "section_number": "468", "offense": "Forgery for purpose of cheating", "justification": "Fake document created and used to deceive the complainant", "bns_equivalent": "336", "confidence": 0.87, "primary": False},
             {"act": "IPC", "section_number": "471", "offense": "Using forged document as genuine", "justification": "Forged document was presented as genuine to the complainant", "bns_equivalent": "336", "confidence": 0.87, "primary": False},
@@ -145,7 +145,8 @@ def correct_sections(raw_sections, facts):
         sections = [s for s in sections if str(s.get("section_number")) not in ["376", "376A", "376D", "64", "65", "66", "63"] or s.get("act") not in ["IPC", "BNS"]]
         sections = [s for s in sections if not (s.get("act") == "POCSO" and str(s.get("section_number")) in ["4", "5", "6"])]
 
-    if facts.get("minor_involved", False) and any(w in complaint_lower for w in ["touched private", "touched inappropriately", "private parts", "touched her body", "touched his body", "fondled", "molested", "inappropriate touch", "touched genitals"]):
+    is_minor = facts.get("minor_involved", False) or any(w in complaint_lower for w in ["year-old", "minor", "child", "daughter", "son", "student", "kid"])
+    if is_minor and any(w in complaint_lower for w in ["touched", "private parts", "fondled", "molested", "inappropriate", "harass"]):
         sections.extend([
             {"act": "POCSO", "section_number": "8", "offense": "Punishment for sexual assault on child", "justification": "Accused committed sexual assault (non-penetrative) on a minor", "confidence": 0.92, "primary": True},
             {"act": "POCSO", "section_number": "12", "offense": "Punishment for sexual harassment of child", "justification": "Accused sexually harassed a minor", "confidence": 0.88, "primary": False}
@@ -156,6 +157,30 @@ def correct_sections(raw_sections, facts):
         sections.extend([
             {"act": "IPC", "section_number": "504", "offense": "Intentional insult with intent to provoke breach of peace", "justification": "Accused used abusive/filthy language intentionally to provoke and insult", "bns_equivalent": "352", "confidence": 0.83, "primary": False},
             {"act": "BNS", "section_number": "352", "offense": "Intentional insult with intent to provoke breach of peace", "justification": "BNS equivalent of IPC 504", "confidence": 0.83, "primary": False}
+        ])
+        
+    # RULE 9: Mischief
+    if any(w in complaint_lower for w in ["broke", "broken", "damaged", "destroyed", "smashed"]):
+        sections.extend([
+            {"act": "IPC", "section_number": "427", "offense": "Mischief causing damage", "justification": "Accused caused damage to property", "bns_equivalent": "324", "confidence": 0.85, "primary": False},
+            {"act": "BNS", "section_number": "324", "offense": "Mischief causing damage", "justification": "BNS equivalent of IPC 427", "confidence": 0.85, "primary": False}
+        ])
+        
+    # RULE 10: Criminal Conspiracy
+    premeditated_keywords = [
+        "planned", "came with", "brought", "waiting for",
+        "along with", "accompanied by", "group of",
+        "approached on", "came on motorcycle", "came prepared",
+        "came together", "assembled", "gathered", "coordinated",
+        "two motorcycles", "came in a vehicle", "came in a car",
+        "came in an auto", "pre-planned", "conspired",
+        "stopped me", "blocked my path", "surrounded",
+        "demanded", "pointed", "gang", "armed with"
+    ]
+    if facts.get("accused_count", 1) >= 2 and any(w in complaint_lower for w in premeditated_keywords):
+        sections.extend([
+            {"act": "IPC", "section_number": "120B", "offense": "Criminal Conspiracy", "justification": "Multiple accused acted with pre-planning", "bns_equivalent": "61(2)", "confidence": 0.90, "primary": False},
+            {"act": "BNS", "section_number": "61(2)", "offense": "Criminal Conspiracy", "justification": "BNS equivalent of IPC 120B", "confidence": 0.90, "primary": False}
         ])
 
     # Replace IPC 503 with 506
