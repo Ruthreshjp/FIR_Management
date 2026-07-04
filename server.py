@@ -1,5 +1,7 @@
 import os
 import json
+from dotenv import load_dotenv
+load_dotenv()
 from flask import Flask, request, jsonify, Response, send_file
 from flask_cors import CORS
 import io

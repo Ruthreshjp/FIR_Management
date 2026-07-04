@@ -5,10 +5,10 @@ from langchain_core.prompts import PromptTemplate
 class IntakeAgent:
     def __init__(self):
         self.llm = ChatGroq(
-            model=os.getenv("GROQ_MODEL", "openai/gpt-oss-20b"),
+            model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
             groq_api_key=os.getenv("GROQ_API_KEY"),
             temperature=0.1,
-            request_timeout=120
+            timeout=120
         )
         self.prompt = PromptTemplate.from_template(
             "Extract structured facts (Who, What, When, Where, Why/How) from the following crime complaint and structured fields.\n\n"

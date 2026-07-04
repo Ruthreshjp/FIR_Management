@@ -5,10 +5,10 @@ from langchain_core.prompts import PromptTemplate
 class DraftingAgent:
     def __init__(self):
         self.llm = ChatGroq(
-            model=os.getenv("GROQ_MODEL", "openai/gpt-oss-20b"),
+            model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
             groq_api_key=os.getenv("GROQ_API_KEY"),
             temperature=0.2,
-            request_timeout=120
+            timeout=120
         )
         self.prompt = PromptTemplate.from_template(
             "You are drafting an official First Information Report (FIR) for the Indian Police.\n\n"

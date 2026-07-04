@@ -1,6 +1,7 @@
 import os
 import csv
 import json
+import re
 
 # Setup paths
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -85,6 +86,22 @@ def normalize_status(val, expected_type):
         return "Conditional"
     return None
 
+def extract_offense_from_description(desc: str, section_num: str) -> str:
+    """For IPC rows missing an Offense field, extract a short title from the Description."""
+    if not desc:
+        return f"IPC Section {section_num}"
+    # Clean the preamble first
+    text = re.sub(
+        rf"Description of IPC Section {re.escape(section_num)}\s*"
+        rf"According to section {re.escape(section_num)} of [Ii]ndian penal code,?\s*",
+        "", desc, flags=re.IGNORECASE
+    )
+    # Take first sentence as the offense title (up to 80 chars)
+    first_sentence = text.split('.')[0].strip()
+    if len(first_sentence) > 80:
+        first_sentence = first_sentence[:77] + "..."
+    return first_sentence or f"IPC Section {section_num}"
+
 def main():
     dataset = []
     
@@ -107,10 +124,16 @@ def main():
             bail = normalize_status(row.get("Bailable") or row.get("bailable"), "bailable")
             court = row.get("Court") or row.get("court")
 
+            # If offense is null/empty, extract from description
+            if not offense or str(offense).strip() in ('', 'nan'):
+                offense = extract_offense_from_description(desc, sec_num)
+            else:
+                offense = offense.strip()
+
             item = {
                 "act": "IPC",
                 "section_number": sec_num,
-                "offense": offense.strip() if offense else None,
+                "offense": offense,
                 "description": desc.strip(),
                 "punishment": punish.strip() if punish else None,
                 "cognizable": cog,
@@ -266,6 +289,107 @@ def main():
     ]
     dataset.extend(MISSING_IPC_SECTIONS)
     print(f"Added {len(MISSING_IPC_SECTIONS)} manual IPC sections")
+
+    IT_ACT_SECTIONS = [
+        {
+            "act": "IT Act",
+            "section_number": "43",
+            "offense": "Penalty for damage to computer or computer system",
+            "description": "If any person without permission of the owner or any other person who is in charge of a computer, computer system or computer network accesses or secures access to such computer, downloads, copies or extracts any data, introduces or causes to be introduced any computer virus or contaminant, damages or causes to be damaged any computer or data, disrupts or causes disruption of any computer or denies or causes the denial of access to any authorised person.",
+            "punishment": "Compensation up to Rs. 1 crore to affected person",
+            "cognizable": "Non-Cognizable",
+            "bailable": "Bailable",
+            "court": "Adjudicating Officer / Civil Court",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "IT Act",
+            "section_number": "66",
+            "offense": "Computer related offences",
+            "description": "If any person, dishonestly or fraudulently, does any act referred to in section 43, he shall be punishable with imprisonment for a term which may extend to three years or with fine which may extend to five lakh rupees or with both.",
+            "punishment": "3 years imprisonment or fine up to Rs. 5 lakh",
+            "cognizable": "Cognizable",
+            "bailable": "Bailable",
+            "court": "Any Magistrate",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "IT Act",
+            "section_number": "66C",
+            "offense": "Identity theft",
+            "description": "Whoever, fraudulently or dishonestly makes use of the electronic signature, password or any other unique identification feature of any other person, shall be punished with imprisonment of either description for a term which may extend to three years and shall also be liable to fine which may extend to rupees one lakh. Includes fraudulent use of OTP, banking password, UPI PIN, Aadhar OTP, internet banking credentials.",
+            "punishment": "3 years imprisonment and fine up to Rs. 1 lakh",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Court of Session",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "IT Act",
+            "section_number": "66D",
+            "offense": "Cheating by personation using computer resource",
+            "description": "Whoever, by means of any communication device or computer resource cheats by personation, shall be punished with imprisonment of either description for a term which may extend to three years and shall also be liable to fine which may extend to one lakh rupees. Includes impersonating bank officials, RBI officers, police officers, government servants via phone, WhatsApp, email, or fake apps to commit fraud.",
+            "punishment": "3 years imprisonment and fine up to Rs. 1 lakh",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Court of Session",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "IT Act",
+            "section_number": "66F",
+            "offense": "Cyber terrorism",
+            "description": "Whoever with intent to threaten the unity, integrity, security or sovereignty of India or to strike terror in the people or any section of people by denying or cause the denial of access to any person authorised to access computer resource, or attempts to penetrate or access a computer resource without authorisation or exceeding authorised access.",
+            "punishment": "Imprisonment for life",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Court of Session",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "IT Act",
+            "section_number": "67",
+            "offense": "Publishing obscene material in electronic form",
+            "description": "Whoever publishes or transmits or causes to be published or transmitted in the electronic form any material which is lascivious or appeals to the prurient interest or if its effect is such as to tend to deprave and corrupt persons who are likely to read, see or hear the matter contained or embodied in it.",
+            "punishment": "First conviction: 3 years and fine up to Rs. 5 lakh. Second: 5 years and fine up to Rs. 10 lakh",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Court of Session",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "IT Act",
+            "section_number": "67A",
+            "offense": "Publishing sexually explicit material electronically",
+            "description": "Whoever publishes or transmits or causes to be published or transmitted in the electronic form any material which contains sexually explicit act or conduct.",
+            "punishment": "First conviction: 5 years and fine up to Rs. 10 lakh. Second: 7 years and fine",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Court of Session",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "IT Act",
+            "section_number": "67B",
+            "offense": "Publishing child sexually abusive material online",
+            "description": "Whoever publishes or transmits material depicting children in sexually explicit act or conduct. Includes creating, collecting, seeking, browsing, downloading or exchanging material in any electronic form depicting children in obscene or sexually explicit manner.",
+            "punishment": "First conviction: 5 years and fine up to Rs. 10 lakh. Second: 7 years and fine",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Court of Session",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        }
+    ]
+    dataset.extend(IT_ACT_SECTIONS)
+    print(f"Added {len(IT_ACT_SECTIONS)} manual IT Act sections")
             
     # 2. Process BNS CSV
     # Need to reverse mapping: BNS -> primary IPC

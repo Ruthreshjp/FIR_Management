@@ -1,45 +1,56 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, X, ArrowRight, Save, User } from 'lucide-react'
 import { useProfile } from '../context/ProfileContext'
 import StepperBar from '../components/StepperBar'
 import AgentPipeline from '../components/AgentPipeline'
 
+const initialFormState = {
+  complainant_name: '',
+  complainant_phone: '',
+  complainant_gender: '',
+  complainant_id_type: '',
+  complainant_id_number: '',
+  complainant_address: '',
+  complainant_city: '',
+  complainant_state: '',
+  incident_date: '',
+  incident_time: '',
+  incident_location: '',
+  incident_landmark: '',
+  accused_name: '',
+  accused_description: '',
+  accused_vehicle: '',
+  witnesses: [],
+  complaint_text: ''
+}
+
 export default function NewFIR() {
   const { profile } = useProfile()
   const [step, setStep] = useState(0)
   
-  const [formData, setFormData] = useState({
-    // Section A
-    complainant_name: '',
-    complainant_phone: '',
-    complainant_gender: '',
-    complainant_id_type: '',
-    complainant_id_number: '',
-    complainant_address: '',
-    complainant_city: '',
-    complainant_state: '',
-    // Section B
-    incident_date: '',
-    incident_time: '',
-    incident_location: '',
-    incident_landmark: '',
-    // Section C
-    accused_name: '',
-    accused_description: '',
-    accused_vehicle: '',
-    // Section D
-    witnesses: [],
-    // Section E
-    complaint_text: ''
-  })
-
+  const [formData, setFormData] = useState(initialFormState)
   const [showAccused, setShowAccused] = useState(false)
   
   // Pipeline state
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [activeAgent, setActiveAgent] = useState('intake') // intake -> legal -> drafting
+  const [activeAgent, setActiveAgent] = useState('intake')
   const [isComplete, setIsComplete] = useState(false)
   const [draftContent, setDraftContent] = useState('')
+
+  useEffect(() => {
+    // Reset form when component mounts (navigating from sidebar)
+    resetForm()
+  }, [])
+
+  const resetForm = () => {
+    setFormData(initialFormState)
+    setStep(0)
+    setShowAccused(false)
+    setIsSubmitting(false)
+    setActiveAgent('intake')
+    setIsComplete(false)
+    setDraftContent('')
+  }
 
   const handleChange = (e) => setFormData({...formData, [e.target.name]: e.target.value})
 
@@ -145,6 +156,18 @@ export default function NewFIR() {
           Filing Officer: {profile.officerName} · {profile.rank} · {profile.stationName}
         </div>
         <AgentPipeline activeAgent={activeAgent} isComplete={isComplete} draftContent={draftContent} />
+        
+        {isComplete && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '32px', marginBottom: '60px' }}>
+            <button 
+              className="btn btn-primary" 
+              onClick={resetForm}
+              style={{ minWidth: '250px', height: '48px' }}
+            >
+              <Plus size={18} /> File Another FIR
+            </button>
+          </div>
+        )}
       </div>
     )
   }

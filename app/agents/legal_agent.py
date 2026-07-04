@@ -16,14 +16,16 @@ Rules:
    ALWAYS check if IPC 34 (common intention) applies
 3. For pre-planned offences with 2+ accused, check IPC 120B 
    (criminal conspiracy)
-4. For groups of 5+ persons, check IPC 149 (unlawful assembly)
+4. For groups of 3+ persons, check IPC 149 (unlawful assembly)
 5. If accused fled after the offence, check IPC 201/BNS 238
 6. If a dangerous weapon was used, check IPC 326/BNS 118 
    alongside the primary offence
-7. For offences against women, check IPC 354/BNS 74 alongside 
-   primary sections
-8. For offences against children under 18, ALWAYS check POCSO 
-   sections first
+7. BNS 74 / IPC 354 False Positive Rule: ONLY add these if the act was explicitly directed at a woman's modesty (e.g., groping, molestation, sexual gesture, eve teasing, touched inappropriately). DO NOT add it if a woman is merely physically assaulted during a robbery or property crime without sexual intent.
+8. POCSO Routing Rule: When minor_involved is True, do NOT automatically apply POCSO 11. 
+   - If complaint contains "rape", "sexual", "touched private", "molestation" -> POCSO 4 or 8
+   - If complaint contains sexual terms + minor -> POCSO 12
+   - If complaint contains physical assault + minor + during robbery/kidnapping/trafficking -> POCSO 9
+   - If NO sexual element at all, only physical assault during property crime -> DO NOT add any POCSO section. Apply regular IPC/BNS sections.
 9. Do not include sections where the facts clearly do not support 
    the legal elements — justify each inclusion
 10. Rank sections by importance: Primary offence first, then 
@@ -57,8 +59,10 @@ CRITICAL BNS MAPPING RULES:
    IPC 506 Criminal Intimidation → BNS 351
    If the IPC section is not in this list, look it up from the ChromaDB metadata corresponding_bns field.
    
-CRITICAL CONSPIRACY RULES:
+CRITICAL CONSPIRACY AND INTIMIDATION RULES:
 Never cite IPC 120A as a charge. It is a definition section only. Use IPC 120B for criminal conspiracy charges.
+Never cite IPC 503 as a charge. It is a definition section only. Use IPC 506 for criminal intimidation punishment.
+Never cite BNS 4, 5, 6, 7, 8, 9, 10, 11, or 12. These are constitutional/general provisions. POCSO sections with these numbers must use act="POCSO".
 """
 
 USER_PROMPT = """
@@ -105,10 +109,10 @@ Return ONLY the JSON array. No explanation text outside the array."""
 class LegalAgent:
     def __init__(self):
         self.llm = ChatGroq(
-            model=os.getenv("GROQ_MODEL", "openai/gpt-oss-20b"),
+            model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
             groq_api_key=os.getenv("GROQ_API_KEY"),
             temperature=0.1,
-            request_timeout=120
+            timeout=120
         )
         
         self.prompt = PromptTemplate.from_template(SYSTEM_PROMPT + "\n\n" + USER_PROMPT)
@@ -121,13 +125,21 @@ class LegalAgent:
         # RULE A — Multiple accused acting together
         accused_count_str = str(facts_dict.get("accused_count", ""))
         try:
-            # Check if count > 1
-            if accused_count_str and accused_count_str.isdigit() and int(accused_count_str) >= 2:
+            count = int(accused_count_str) if accused_count_str and accused_count_str.isdigit() else 1
+            if count >= 2 or any(w in c for w in [
+                "planned", "came with", "brought", "waiting for",
+                "along with", "accompanied by", "group of",
+                "approached on", "came on motorcycle", "came prepared",
+                "came together", "assembled", "gathered", "coordinated",
+                "two motorcycles", "came in a vehicle", "came in a car",
+                "came in an auto", "pre-planned", "conspired",
+                "stopped me", "blocked my path", "surrounded",
+                "demanded", "pointed", "gang", "armed with"
+            ]):
                 queries.append("common intention several persons joint act")
                 queries.append("conspiracy pre-planned criminal agreement")
-            elif any(w in c for w in ["along with", "group", "gang", "accompanied by", "they all", "persons"]):
-                queries.append("common intention several persons joint act")
-                queries.append("conspiracy pre-planned criminal agreement")
+            
+            if count >= 3 or any(w in c for w in ["group", "gang", "mob", "crowd", "they all", "five or more persons"]):
                 queries.append("unlawful assembly five or more persons")
         except:
             pass
@@ -158,7 +170,7 @@ class LegalAgent:
             
         return queries
 
-    def run(self, facts: str) -> str:
+    def run(self, facts: str, data: dict = None) -> str:
         """Maps facts to IPC + BNS 2023 sections using RAG and LLM."""
         
         # We assume the Intake Agent returned a JSON string. Parse it to get raw complaint.
@@ -167,7 +179,10 @@ class LegalAgent:
         except Exception:
             facts_dict = {"complaint_text": facts} # fallback if not valid JSON
             
-        complaint_text = facts_dict.get("complaint_text", facts)
+        if data and "complaint_text" in data:
+            complaint_text = data["complaint_text"]
+        else:
+            complaint_text = facts_dict.get("complaint_text", facts)
         
         # 1. Base semantic search on the core facts
         base_query = " ".join(complaint_text.split()[:50])
@@ -217,4 +232,16 @@ class LegalAgent:
             raw_output = raw_output[:-3]
         raw_output = raw_output.strip()
         
+        # === POST-PROCESSING RULES ===
+        try:
+            from app.agents.section_corrector import correct_sections
+            sections = json.loads(raw_output)
+            merged_facts = facts_dict.copy()
+            merged_facts["complaint_text"] = complaint_text
+            final_sections = correct_sections(sections, merged_facts)
+            if final_sections:
+                raw_output = json.dumps(final_sections, indent=2)
+        except Exception as e:
+            pass
+            
         return raw_output

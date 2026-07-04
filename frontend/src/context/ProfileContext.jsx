@@ -16,7 +16,17 @@ export function ProfileProvider({ children }) {
     const saved = localStorage.getItem('autofir_profile')
     if (saved) {
       try {
-        setProfile(JSON.parse(saved))
+        let p = JSON.parse(saved)
+        // Cleanup typo from user's localstorage
+        if (p.district && p.district.includes('yujmkii')) {
+            p.district = p.district.replace('yujmkii', '')
+            localStorage.setItem('autofir_profile', JSON.stringify(p))
+        }
+        if (p.stationName && p.stationName.includes('yujmkii')) {
+            p.stationName = p.stationName.replace('yujmkii', '')
+            localStorage.setItem('autofir_profile', JSON.stringify(p))
+        }
+        setProfile(p)
       } catch (e) {
         console.error(e)
       }

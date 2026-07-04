@@ -32,10 +32,7 @@ class Database:
 
             self.client = MongoClient(
                 uri,
-                serverSelectionTimeoutMS=5000,
-                tls=True,
-                tlsAllowInvalidCertificates=True,
-                tlsCAFile=certifi.where()
+                serverSelectionTimeoutMS=5000
             )
             # Force a call to check if the connection is successful
             self.client.admin.command('ping')
