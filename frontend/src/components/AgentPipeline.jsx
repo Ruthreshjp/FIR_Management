@@ -1,12 +1,13 @@
-import { Loader2, CheckCircle2, FileText, Bot, Scale } from 'lucide-react'
+import { Loader2, CheckCircle2, FileText, Bot, Scale, ShieldCheck } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 
-export default function AgentPipeline({ activeAgent, isComplete, draftContent }) {
-  // activeAgent: 'intake' | 'legal' | 'drafting'
+export default function AgentPipeline({ activeAgent, isComplete, draftContent, verifierStats }) {
+  // activeAgent: 'intake' | 'legal' | 'verifier' | 'drafting'
   
   const agents = [
     { id: 'intake', name: 'Intake Agent', desc: 'Extracting structured facts...', icon: Bot, color: 'var(--india-blue)' },
     { id: 'legal', name: 'Legal Agent', desc: 'Querying ChromaDB · matches found', icon: Scale, color: 'var(--saffron)' },
+    { id: 'verifier', name: 'Legal Verifier', desc: 'Cross-checking sections against complaint facts...', icon: ShieldCheck, color: 'purple' },
     { id: 'drafting', name: 'Drafting Agent', desc: 'Composing FIR narrative...', icon: FileText, color: 'var(--green-ok)' }
   ]
   
@@ -47,7 +48,7 @@ export default function AgentPipeline({ activeAgent, isComplete, draftContent })
                     {agent.name}
                   </div>
                   <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                    {isDone ? 'Complete' : (isActive ? agent.desc : 'Waiting...')}
+                    {isDone ? (agent.id === 'verifier' && verifierStats ? `${verifierStats.kept} of ${verifierStats.total} sections passed verification` : 'Complete') : (isActive ? agent.desc : 'Waiting...')}
                   </div>
                 </div>
               </div>

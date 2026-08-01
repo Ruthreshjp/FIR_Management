@@ -5,6 +5,9 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from app.tools.rag_tool import search_legal_sections
 
+PRIMARY_MODEL = os.getenv("GROQ_MODEL_PRIMARY", "llama-3.3-70b-versatile")
+VERIFIER_MODEL = os.getenv("GROQ_MODEL_VERIFIER", "llama-3.1-8b-instant")
+
 SYSTEM_PROMPT = """You are a senior Indian police legal officer 
 with expertise in IPC, BNS 2023, and POCSO. Your task is to 
 identify ALL applicable legal sections for a given complaint.
@@ -109,7 +112,7 @@ Return ONLY the JSON array. No explanation text outside the array."""
 class LegalAgent:
     def __init__(self):
         self.llm = ChatGroq(
-            model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+            model=PRIMARY_MODEL,
             groq_api_key=os.getenv("GROQ_API_KEY"),
             temperature=0.1,
             timeout=120
@@ -236,8 +239,9 @@ class LegalAgent:
         try:
             from app.agents.section_corrector import correct_sections
             sections = json.loads(raw_output)
-            merged_facts = facts_dict.copy()
-            merged_facts["complaint_text"] = complaint_text
+            merged_facts = data.copy() if data else facts_dict.copy()
+            if "complaint_text" not in merged_facts:
+                merged_facts["complaint_text"] = complaint_text
             final_sections = correct_sections(sections, merged_facts)
             if final_sections:
                 raw_output = json.dumps(final_sections, indent=2)

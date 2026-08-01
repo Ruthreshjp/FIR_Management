@@ -15,13 +15,24 @@ export default function CaseHistory() {
   const [activeFir, setActiveFir] = useState(null)
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/firs')
-      .then(r => r.json())
-      .then(data => {
-        setFirs(data.firs || data)
-        setLoading(false)
-      })
-      .catch(console.error)
+    const fetchData = () => {
+      fetch('http://localhost:5000/api/firs')
+        .then(res => res.json())
+        .then(data => {
+          if (data.firs) {
+            setFirs(data.firs)
+          }
+          setLoading(false)
+        })
+        .catch(err => {
+          console.error(err)
+          setLoading(false)
+        })
+    }
+    
+    fetchData()
+    const interval = setInterval(fetchData, 10000)
+    return () => clearInterval(interval)
   }, [])
 
   const filteredFirs = firs.filter(f => {
@@ -102,7 +113,7 @@ export default function CaseHistory() {
               <tbody>
                 {filteredFirs.map((fir, i) => {
                   const dateStr = fir.created_at ? new Date(fir.created_at).toLocaleDateString('en-IN') : '-'
-                  const type = fir.sections?.[0]?.title || 'Unknown'
+                  const type = Array.isArray(fir.sections) ? (fir.sections[0]?.title || 'Unknown') : 'Unknown'
                   
                   return (
                     <tr key={i} style={{ borderBottom: '1px solid var(--border)', transition: 'background 150ms ease' }} onMouseOver={e => e.currentTarget.style.background = 'var(--india-blue-light)'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
@@ -118,8 +129,8 @@ export default function CaseHistory() {
                       </td>
                       <td style={{ padding: '16px 24px' }}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                          {(fir.sections || []).slice(0, 2).map((sec, idx) => (
-                            <SectionChip key={idx} act={sec.section.includes('BNS') ? 'BNS' : 'IPC'} sectionNumber={sec.section.replace(/IPC|BNS/i, '').trim()} />
+                          {(Array.isArray(fir.sections) ? fir.sections : []).slice(0, 2).map((sec, idx) => (
+                            <SectionChip key={idx} act={sec.act || 'BNS'} sectionNumber={sec.section_number || sec.section} />
                           ))}
                         </div>
                       </td>

@@ -36,6 +36,7 @@ export default function NewFIR() {
   const [activeAgent, setActiveAgent] = useState('intake')
   const [isComplete, setIsComplete] = useState(false)
   const [draftContent, setDraftContent] = useState('')
+  const [verifierStats, setVerifierStats] = useState(null)
 
   useEffect(() => {
     // Reset form when component mounts (navigating from sidebar)
@@ -50,6 +51,7 @@ export default function NewFIR() {
     setActiveAgent('intake')
     setIsComplete(false)
     setDraftContent('')
+    setVerifierStats(null)
   }
 
   const handleChange = (e) => setFormData({...formData, [e.target.name]: e.target.value})
@@ -73,6 +75,7 @@ export default function NewFIR() {
     setActiveAgent('intake')
     setIsComplete(false)
     setDraftContent('')
+    setVerifierStats(null)
 
     const payload = {
       ...formData,
@@ -130,6 +133,11 @@ export default function NewFIR() {
                 setActiveAgent('intake')
               } else if (data.agent === 'Legal Agent') {
                 setActiveAgent('legal')
+              } else if (data.agent === 'Verifier') {
+                setActiveAgent('verifier')
+                if (data.stage === 'verifier') {
+                  setVerifierStats({kept: data.kept, total: data.total})
+                }
               } else if (data.agent === 'Drafting Agent') {
                 setActiveAgent('drafting')
                 if (data.type === 'thought' && data.message) {
@@ -155,7 +163,7 @@ export default function NewFIR() {
           <User size={14} />
           Filing Officer: {profile.officerName} · {profile.rank} · {profile.stationName}
         </div>
-        <AgentPipeline activeAgent={activeAgent} isComplete={isComplete} draftContent={draftContent} />
+        <AgentPipeline activeAgent={activeAgent} isComplete={isComplete} draftContent={draftContent} verifierStats={verifierStats} />
         
         {isComplete && (
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: '32px', marginBottom: '60px' }}>

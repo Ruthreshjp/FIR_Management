@@ -2,10 +2,13 @@ import os
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 
+PRIMARY_MODEL = os.getenv("GROQ_MODEL_PRIMARY", "llama-3.3-70b-versatile")
+VERIFIER_MODEL = os.getenv("GROQ_MODEL_VERIFIER", "llama-3.1-8b-instant")
+
 class IntakeAgent:
     def __init__(self):
         self.llm = ChatGroq(
-            model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+            model=PRIMARY_MODEL,
             groq_api_key=os.getenv("GROQ_API_KEY"),
             temperature=0.1,
             timeout=120

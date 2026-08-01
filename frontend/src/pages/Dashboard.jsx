@@ -13,33 +13,35 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([
-      fetch('http://localhost:5000/api/firs').then(r => r.json()),
-      fetch('http://localhost:5000/api/analytics').then(r => r.json())
-    ])
-    .then(([firData, analyticsData]) => {
-      if (firData.firs) {
-        setFirs(firData.firs)
-        setSummary(firData.summary)
-      }
-      setAnalytics(analyticsData)
-      setLoading(false)
-    })
-    .catch(err => {
-      console.error(err)
-      setLoading(false)
-    })
+    const fetchData = () => {
+      Promise.all([
+        fetch('http://localhost:5000/api/firs').then(r => r.json()),
+        fetch('http://localhost:5000/api/analytics').then(r => r.json())
+      ])
+      .then(([firData, analyticsData]) => {
+        if (firData.firs) {
+          setFirs(firData.firs)
+          setSummary(firData.summary)
+        }
+        setAnalytics(analyticsData)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error(err)
+        setLoading(false)
+      })
+    }
+
+    // Initial fetch
+    fetchData()
+
+    // Poll every 10 seconds for live updates
+    const interval = setInterval(fetchData, 10000)
+    return () => clearInterval(interval)
   }, [])
 
   if (loading) return <div>Loading dashboard...</div>
 
-  // Generate fake pipeline activity feed
-  const feed = [
-    { type: 'intake', agent: 'Intake Agent', action: 'extracted facts for FIR-0143', time: '10 mins ago', color: 'var(--india-blue)' },
-    { type: 'legal', agent: 'Legal Agent', action: 'matched 3 sections for FIR-0143', time: '11 mins ago', color: 'var(--saffron)' },
-    { type: 'drafting', agent: 'Drafting Agent', action: 'completed draft for FIR-0142', time: '1 hour ago', color: 'var(--green-ok)' },
-    { type: 'intake', agent: 'Intake Agent', action: 'extracted facts for FIR-0142', time: '1 hour ago', color: 'var(--india-blue)' }
-  ]
 
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60)
@@ -123,10 +125,10 @@ export default function Dashboard() {
                       </td>
                       <td style={{ padding: '16px 24px' }}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                          {(fir.sections || []).slice(0, 2).map((sec, idx) => (
-                            <SectionChip key={idx} act={sec.section.includes('BNS') ? 'BNS' : 'IPC'} sectionNumber={sec.section.replace(/IPC|BNS/i, '').trim()} />
+                          {(Array.isArray(fir.sections) ? fir.sections : []).slice(0, 2).map((sec, idx) => (
+                            <SectionChip key={idx} act={sec.act || 'BNS'} sectionNumber={sec.section_number || sec.section} />
                           ))}
-                          {fir.sections?.length > 2 && <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>+{fir.sections.length - 2} more</span>}
+                          {Array.isArray(fir.sections) && fir.sections.length > 2 && <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>+{fir.sections.length - 2} more</span>}
                         </div>
                       </td>
                       <td style={{ padding: '16px 24px', fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -150,7 +152,7 @@ export default function Dashboard() {
       </div>
 
       {/* BOTTOM PANELS */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '32px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '32px', alignItems: 'start' }}>
         
         {/* Most Invoked Sections */}
         <div className="card" style={{ padding: '24px' }}>
@@ -180,28 +182,6 @@ export default function Dashboard() {
                 </div>
               )
             })}
-          </div>
-        </div>
-
-        {/* Pipeline Activity */}
-        <div className="card" style={{ padding: '24px' }}>
-          <h3 style={{ marginBottom: '24px' }}>Pipeline Activity</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-            {feed.map((item, i) => (
-              <div key={i} style={{ display: 'flex', gap: '16px', padding: '16px 0', borderBottom: i < feed.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                <div style={{ marginTop: '4px' }}>
-                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: item.color }}></div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                    <span style={{ fontWeight: 600 }}>{item.agent}</span> {item.action}
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    {item.time}
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
 

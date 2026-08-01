@@ -2,6 +2,10 @@ import os
 import json
 from dotenv import load_dotenv
 load_dotenv()
+
+PRIMARY_MODEL = os.getenv("GROQ_MODEL_PRIMARY", "llama-3.3-70b-versatile")
+VERIFIER_MODEL = os.getenv("GROQ_MODEL_VERIFIER", "llama-3.1-8b-instant")
+
 from flask import Flask, request, jsonify, Response, send_file
 from flask_cors import CORS
 import io
@@ -59,6 +63,9 @@ def get_firs():
             "summary": summary
         })
     except Exception as e:
+        import traceback
+        with open("flask_error.txt", "w") as f:
+            f.write(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 from app.utils.date_parser import resolve_relative_dates
@@ -187,10 +194,12 @@ def get_analytics():
                 continue
             for s in sections:
                 if isinstance(s, dict):
-                    sec = s.get('section', '')
+                    sec = s.get('section_number', s.get('section', ''))
+                    act = s.get('act', '')
                     if sec:
-                        section_counts[sec] += 1
-                        section_labels[sec] = s.get('title', 'Unknown Offense')
+                        full_sec = f"{act} {sec}".strip()
+                        section_counts[full_sec] += 1
+                        section_labels[full_sec] = s.get('title', s.get('offense', 'Unknown Offense'))
                     
         top_sections = [{"section": k, "label": section_labels.get(k, ''), "count": v} 
                         for k, v in section_counts.most_common(5)]

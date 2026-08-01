@@ -29,9 +29,22 @@ def initialize_chroma_store():
     
     for i, item in enumerate(dataset):
         # Create a search document
-        doc = f"{item['offense']} - {item['description']} - Keywords: {', '.join(item['keywords'])}"
+        offense = item.get('offense', '')
+        desc = item.get('description', '')
+        keywords = item.get('keywords', [])
+        kw_str = ', '.join(keywords) if keywords else ''
+        doc = f"{offense} - {desc} - Keywords: {kw_str}"
         documents.append(doc)
-        metadatas.append(item)
+        clean_item = {}
+        for k, v in item.items():
+            if v is None:
+                continue
+            if isinstance(v, (str, int, float, bool)):
+                clean_item[k] = v
+            else:
+                clean_item[k] = str(v)
+                
+        metadatas.append(clean_item)
         ids.append(f"law_{i}")
         
     if documents:

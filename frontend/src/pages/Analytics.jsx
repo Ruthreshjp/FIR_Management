@@ -11,16 +11,22 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/analytics')
-      .then(res => res.json())
-      .then(d => {
-        setData(d)
-        setLoading(false)
-      })
-      .catch(err => {
-        console.error(err)
-        setLoading(false)
-      })
+    const fetchData = () => {
+      fetch('http://localhost:5000/api/analytics')
+        .then(res => res.json())
+        .then(d => {
+          setData(d)
+          setLoading(false)
+        })
+        .catch(err => {
+          console.error(err)
+          setLoading(false)
+        })
+    }
+    
+    fetchData()
+    const interval = setInterval(fetchData, 10000)
+    return () => clearInterval(interval)
   }, [])
 
   if (loading) return <div className="page-container"><p>Loading analytics...</p></div>
