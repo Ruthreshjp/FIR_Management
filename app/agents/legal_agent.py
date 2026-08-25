@@ -4,68 +4,59 @@ import re
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from app.tools.rag_tool import search_legal_sections
+from app.agents.act_selector import select_relevant_acts
+from app.agents.crime_classifier import CrimeClassifierAgent
+from app.config.section_mapping import ALLOWED_SECTIONS
 
-PRIMARY_MODEL = os.getenv("GROQ_MODEL_PRIMARY", "llama-3.3-70b-versatile")
-VERIFIER_MODEL = os.getenv("GROQ_MODEL_VERIFIER", "llama-3.1-8b-instant")
+PRIMARY_MODEL = os.getenv("GROQ_MODEL_PRIMARY", "openai/gpt-oss-120b")
+VERIFIER_MODEL = os.getenv("GROQ_MODEL_VERIFIER", "openai/gpt-oss-20b")
 
-SYSTEM_PROMPT = """You are a senior Indian police legal officer 
+SYSTEM_PROMPT = """You are a strict, senior Indian police legal officer 
 with expertise in IPC, BNS 2023, and POCSO. Your task is to 
-identify ALL applicable legal sections for a given complaint.
+identify the most applicable legal sections for a given complaint.
 
-Rules:
-1. Always cite BOTH the BNS 2023 section AND the corresponding 
-   IPC section (for reference during transition period)
-2. For complaints involving multiple accused acting together, 
-   ALWAYS check if IPC 34 (common intention) applies
-3. For pre-planned offences with 2+ accused, check IPC 120B 
-   (criminal conspiracy)
-4. For groups of 3+ persons, check IPC 149 (unlawful assembly)
-5. If accused fled after the offence, check IPC 201/BNS 238
-6. If a dangerous weapon was used, check IPC 326/BNS 118 
-   alongside the primary offence
-7. BNS 74 / IPC 354 False Positive Rule: ONLY add these if the act was explicitly directed at a woman's modesty (e.g., groping, molestation, sexual gesture, eve teasing, touched inappropriately). DO NOT add it if a woman is merely physically assaulted during a robbery or property crime without sexual intent.
-8. POCSO Routing Rule: When minor_involved is True, do NOT automatically apply POCSO 11. 
-   - If complaint contains "rape", "sexual", "touched private", "molestation" -> POCSO 4 or 8
-   - If complaint contains sexual terms + minor -> POCSO 12
-   - If complaint contains physical assault + minor + during robbery/kidnapping/trafficking -> POCSO 9
-   - If NO sexual element at all, only physical assault during property crime -> DO NOT add any POCSO section. Apply regular IPC/BNS sections.
-9. Do not include sections where the facts clearly do not support 
-   the legal elements — justify each inclusion
-10. Rank sections by importance: Primary offence first, then 
-    joint liability, then procedural/secondary sections
-    
-CRITICAL BNS MAPPING RULES:
-1. BNS 2023 has completely different section numbers from IPC. NEVER assume a BNS section number by copying the IPC number. You MUST use the corresponding_bns field from the candidate metadata.
-2. If no BNS mapping exists, write 'No direct BNS equivalent' — do not fabricate a BNS section number.
-3. Known correct mappings you must always use:
-   IPC 302 Murder → BNS 103
-   IPC 307 Attempt to Murder → BNS 109
-   IPC 323 Hurt → BNS 115
-   IPC 324 Hurt by weapon → BNS 116
-   IPC 325 Grievous Hurt → BNS 117
-   IPC 326 Grievous Hurt by weapon → BNS 118
-   IPC 34 Common Intention → BNS 3(5) (subsection 5 of Section 3)
-   IPC 107 Abetment → BNS 48
-   IPC 109 Punishment of Abetment → BNS 49
-   IPC 120B Conspiracy → No direct BNS equivalent
-   IPC 141 Unlawful Assembly definition → BNS 187
-   IPC 142 Member of Unlawful Assembly → BNS 188
-   IPC 143 Punishment for Unlawful Assembly → BNS 189
-   IPC 144 Armed Unlawful Assembly → BNS 189
-   IPC 149 Every member of unlawful assembly guilty → BNS 190
-   IPC 201 Absconding / destroying evidence → BNS 238
-   IPC 354 Outraging Modesty → BNS 74
-   IPC 376 Rape → BNS 64
-   IPC 379 Theft → BNS 303
-   IPC 392 Robbery → BNS 309
-   IPC 420 Cheating → BNS 318
-   IPC 506 Criminal Intimidation → BNS 351
-   If the IPC section is not in this list, look it up from the ChromaDB metadata corresponding_bns field.
-   
-CRITICAL CONSPIRACY AND INTIMIDATION RULES:
-Never cite IPC 120A as a charge. It is a definition section only. Use IPC 120B for criminal conspiracy charges.
-Never cite IPC 503 as a charge. It is a definition section only. Use IPC 506 for criminal intimidation punishment.
-Never cite BNS 4, 5, 6, 7, 8, 9, 10, 11, or 12. These are constitutional/general provisions. POCSO sections with these numbers must use act="POCSO".
+QUALITY OVER QUANTITY:
+Your primary directive is absolute accuracy. It is much better to return ONLY 2-4 highly accurate sections than a long list of weakly related ones.
+Do not add extra sections unless the facts explicitly support every legal element. PREFER EXACT MATCHING SECTIONS ONLY.
+
+CRITICAL RULE:
+You CANNOT invent or pick sections that are not explicitly provided in the "Candidate sections from semantic search". You MUST only select from the provided candidates. If a section is not in the candidate list, DO NOT use it.
+
+STRICT FILTERING RULES:
+1. Animal Cruelty Case -> ONLY animal-related sections (e.g. IPC 428/429, BNS 325). NO human hurt sections (IPC 323, 302, BNS 115) should ever be added.
+2. Robbery vs Extortion -> 
+   - Robbery (force/threat of immediate force + theft) -> MUST use IPC 392. DO NOT use Extortion (IPC 384). Property MUST actually be taken. If no property is taken, DO NOT add Robbery.
+   - Extortion (threat without immediate force to deliver property) -> IPC 384.
+3. Pure Cyber Cases -> NO physical assault or physical theft sections.
+4. Murder (IPC 302/BNS 103) -> ONLY if victim is dead.
+5. Rash Driving / Accidents -> If the incident involves a vehicle causing injury (but no theft/robbery intent), use IPC 279, 337, 338. Do not use Robbery just because the accused fled in a vehicle.
+6. Criminal Conspiracy (IPC 120B / BNS 61) -> ONLY add if there is clear evidence of pre-planning or prior agreement. DO NOT add conspiracy just because there are multiple accused, they acted together, or they used a weapon. (Use IPC 34 / BNS 3(5) for common intention instead).
+
+CRITICAL BNS MAPPING RULES (Use these to supply BNS equivalents if missing):
+- IPC 302 (Murder) -> BNS 103
+- IPC 307 (Attempt to Murder) -> BNS 109
+- IPC 323 (Voluntarily causing hurt) -> BNS 115
+- IPC 324 (Hurt by dangerous weapons) -> BNS 115(2)
+- IPC 326 (Grievous hurt by weapons) -> BNS 118
+- IPC 354 (Assault to outrage modesty) -> BNS 74
+- IPC 376 (Rape) -> BNS 64
+- IPC 379 (Theft) -> BNS 303
+- IPC 380 (Theft in dwelling) -> BNS 305
+- IPC 384 (Extortion) -> BNS 308
+- IPC 392 (Robbery) -> BNS 309
+- IPC 395 (Dacoity) -> BNS 310
+- IPC 406 (Criminal Breach of Trust) -> BNS 316
+- IPC 411 (Dishonestly receiving stolen property) -> BNS 317
+- IPC 420 (Cheating/Fraud) -> MUST INCLUDE BNS 318
+- IPC 428/429 (Animal Mischief) -> BNS 325
+- IPC 498A (Domestic Violence) -> BNS 85
+- IPC 504 (Intentional insult) -> BNS 352
+- IPC 506 (Criminal intimidation) -> BNS 351
+
+EVALUATION PROCESS:
+You must first evaluate the candidate sections in an "evaluations" array, explicitly stating whether each candidate applies or not and why. 
+Then, populate the "selected_sections" array with ONLY the exact, truly applicable sections (IPC, BNS, or POCSO) chosen strictly from the candidates.
+Do not link BNS and IPC in the same object; output them as separate, independent entries in "selected_sections".
 """
 
 USER_PROMPT = """
@@ -86,28 +77,34 @@ Extracted Facts:
 Candidate sections from semantic search (analyze each carefully):
 {candidate_sections}
 
-Return a JSON array of matched sections:
-[
-  {{
-    "act": "BNS",
-    "section_number": "103",
-    "offense": "Murder",
-    "justification": "One-line reason why this section applies",
-    "confidence": 0.95,
-    "primary": true
-  }},
-  {{
-    "act": "IPC", 
-    "section_number": "302",
-    "offense": "Murder",
-    "justification": "IPC reference — superseded by BNS 103",
-    "confidence": 0.95,
-    "primary": false,
-    "reference_only": true
-  }}
-]
+Return a JSON object strictly matching this schema:
+{{
+  "evaluations": [
+    {{
+      "section": "IPC 323",
+      "applicable": false,
+      "reason": "This is an animal cruelty case; human hurt section does not apply."
+    }}
+  ],
+  "selected_sections": [
+    {{
+      "act": "IPC",
+      "section_number": "428",
+      "offense": "Mischief by killing or maiming animal",
+      "justification": "The accused intentionally poisoned the pet dog.",
+      "confidence": 0.95
+    }},
+    {{
+      "act": "BNS",
+      "section_number": "325",
+      "offense": "Mischief by killing or maiming animal",
+      "justification": "BNS equivalent for poisoning the pet dog.",
+      "confidence": 0.95
+    }}
+  ]
+}}
 
-Return ONLY the JSON array. No explanation text outside the array."""
+Return ONLY the JSON object. No explanation text outside the JSON."""
 
 class LegalAgent:
     def __init__(self):
@@ -117,6 +114,7 @@ class LegalAgent:
             temperature=0.1,
             timeout=120
         )
+        self.crime_classifier = CrimeClassifierAgent()
         
         self.prompt = PromptTemplate.from_template(SYSTEM_PROMPT + "\n\n" + USER_PROMPT)
 
@@ -168,8 +166,23 @@ class LegalAgent:
             queries.append("attempt to murder")
             
         # Minor/child
-        if any(w in c for w in ["child", "minor", "year old", "school", "boy", "girl"]):
+        if facts_dict.get("minor_involved", False) or any(w in c for w in ["child", "minor", "year old", "school", "boy", "girl"]):
             queries.append("child POCSO minor")
+            
+        # Animal cruelty
+        if facts_dict.get("animal_involved", False):
+            queries.append("mischief killing maiming animal cattle IPC 428 IPC 429 BNS 325")
+            
+        # Cyber / IT Act
+        if facts_dict.get("cyber_method", False):
+            queries.append("IT Act 66C 66D cheating online fraud computer resource phishing")
+            
+        # Property taken
+        if facts_dict.get("property_taken", False):
+            if facts_dict.get("force_used", False):
+                queries.append("robbery theft with force extortion")
+            else:
+                queries.append("theft stolen property cheating breach of trust")
             
         return queries
 
@@ -187,27 +200,91 @@ class LegalAgent:
         else:
             complaint_text = facts_dict.get("complaint_text", facts)
         
-        # 1. Base semantic search on the core facts
-        base_query = " ".join(complaint_text.split()[:50])
-        candidate_sections = search_legal_sections(base_query, top_k=10)
-        
-        # 2. Add Category Boosting
-        boost_queries = self._boost_queries(complaint_text, facts_dict)
-        for bq in boost_queries:
-            # We add 2 top hits for each boosted query
-            boost_hits = search_legal_sections(bq, top_k=2)
-            candidate_sections.extend(boost_hits)
-            
-        # 3. Deduplicate candidate sections based on act + section number
-        seen = set()
-        unique_candidates = []
-        for sec in candidate_sections:
-            key = f"{sec.get('act', '')}_{sec.get('section_number', '')}"
-            if key not in seen:
-                seen.add(key)
-                unique_candidates.append(sec)
+        # Step A: LLM selects relevant acts
+        relevant_acts = select_relevant_acts(complaint_text, facts_dict)
 
-        candidates_str = json.dumps(unique_candidates, indent=2)
+        from app.tools.rag_tool import rag_instance
+        self.collection = getattr(rag_instance, 'collection', None)
+        
+        candidates = {}
+        if self.collection:
+            # Step B: General semantic search
+            query_vector = rag_instance.model.encode([complaint_text]).tolist()
+            results = self.collection.query(
+                query_embeddings=query_vector,
+                n_results=10
+            )
+            for doc, meta in zip(results['documents'][0], results['metadatas'][0]):
+                key = (meta.get('act'), meta.get('section_number'))
+                candidates[key] = meta
+
+            # Step C: Targeted search for each selected act
+            act_query_map = {
+                "NDPS_ACT": "narcotic drug cocaine heroin ganja possession sale trafficking dealer peddler",
+                "ARMS_ACT": "illegal arms weapon firearm pistol rifle unlicensed ammunition country made gun",
+                "POCSO": "child minor sexual assault harassment inappropriate touching private parts",
+                "IT_ACT": "cyber online fraud OTP phishing identity theft anydesk remote access hacking",
+                "SC_ST_ACT": "caste discrimination atrocity scheduled caste tribe abuse humiliation caste name",
+                "MOTOR_VEHICLES_ACT": "accident rash driving death injury hit run drunk driving vehicle",
+                "NI_ACT": "cheque bounce dishonour insufficient funds payment returned bank",
+                "PREVENTION_OF_CORRUPTION": "bribe corruption public servant gratification misuse of office",
+                "JUVENILE_JUSTICE_ACT": "child cruelty neglect abuse abandonment minor welfare",
+                "EXPLOSIVES_ACT": "bomb blast explosion explosive IED explosive substance",
+                "HUMAN_TRAFFICKING": "trafficking kidnap forced labour sexual exploitation bonded labour",
+                "DOWRY_ACT": "dowry demand harassment dowry death matrimonial cruelty",
+                "PMLA": "money laundering hawala proceeds of crime financial fraud large amount",
+            }
+
+            for act in relevant_acts:
+                if act in act_query_map:
+                    try:
+                        act_query_vector = rag_instance.model.encode([act_query_map[act]]).tolist()
+                        act_results = self.collection.query(
+                            query_embeddings=act_query_vector,
+                            n_results=5
+                        )
+                        for doc, meta in zip(act_results['documents'][0], act_results['metadatas'][0]):
+                            key = (meta.get('act'), meta.get('section_number'))
+                            if key not in candidates:
+                                candidates[key] = meta
+                    except Exception as e:
+                        print(f"[LegalAgent] Act search error {act}: {e}")
+        else:
+            # Fallback if no collection
+            candidate_sections = search_legal_sections(complaint_text, top_k=10)
+            for sec in candidate_sections:
+                key = (sec.get('act'), sec.get('section_number'))
+                candidates[key] = sec
+
+        # Step D: Filter candidates using Crime Classifier
+        categories = self.crime_classifier.run(complaint_text, facts_dict)
+        print(f"[LegalAgent] Detected Crime Categories: {categories}")
+        
+        allowed_sections = {}
+        restrict_sections = True
+        
+        if "Others" in categories and len(categories) == 1:
+            restrict_sections = False
+        else:
+            for cat in categories:
+                mapping = ALLOWED_SECTIONS.get(cat, {})
+                for act, secs in mapping.items():
+                    if act not in allowed_sections:
+                        allowed_sections[act] = set()
+                    allowed_sections[act].update(secs)
+        
+        all_candidates = []
+        for key, meta in candidates.items():
+            act, sec = key
+            if restrict_sections:
+                if act in allowed_sections and str(sec) in allowed_sections[act]:
+                    all_candidates.append(meta)
+            else:
+                all_candidates.append(meta)
+
+        print(f"[LegalAgent] Filtered candidates to {len(all_candidates)} sections based on {categories}")
+
+        candidates_str = json.dumps(all_candidates, indent=2)
         
         # Extract variables for the prompt safely
         chain = self.prompt | self.llm
@@ -238,14 +315,25 @@ class LegalAgent:
         # === POST-PROCESSING RULES ===
         try:
             from app.agents.section_corrector import correct_sections
-            sections = json.loads(raw_output)
+            parsed_json = json.loads(raw_output)
+            
+            # The new schema returns an object with "selected_sections"
+            if isinstance(parsed_json, dict) and "selected_sections" in parsed_json:
+                sections = parsed_json["selected_sections"]
+            else:
+                # Fallback in case LLM returned the array directly
+                sections = parsed_json if isinstance(parsed_json, list) else []
+
             merged_facts = data.copy() if data else facts_dict.copy()
             if "complaint_text" not in merged_facts:
                 merged_facts["complaint_text"] = complaint_text
             final_sections = correct_sections(sections, merged_facts)
-            if final_sections:
-                raw_output = json.dumps(final_sections, indent=2)
+            
+            # ALWAYS override raw_output with final_sections so it's a JSON array
+            raw_output = json.dumps(final_sections if final_sections else [], indent=2)
+
         except Exception as e:
+            print(f"[LegalAgent] JSON Parse / Corrector Error: {e}")
             pass
             
         return raw_output

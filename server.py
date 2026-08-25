@@ -3,8 +3,8 @@ import json
 from dotenv import load_dotenv
 load_dotenv()
 
-PRIMARY_MODEL = os.getenv("GROQ_MODEL_PRIMARY", "llama-3.3-70b-versatile")
-VERIFIER_MODEL = os.getenv("GROQ_MODEL_VERIFIER", "llama-3.1-8b-instant")
+PRIMARY_MODEL = os.getenv("GROQ_MODEL_PRIMARY", "llama-3.1-70b-versatile")
+VERIFIER_MODEL = os.getenv("GROQ_MODEL_VERIFIER", "llama-3.1-70b-versatile")
 
 from flask import Flask, request, jsonify, Response, send_file
 from flask_cors import CORS
@@ -17,7 +17,7 @@ from app.pdf.generator import create_fir_pdf
 app = Flask(__name__)
 CORS(app)
 
-from app.retrieval.chroma_store import initialize_chroma_store, collection
+from app.retrieval.chroma_store import initialize_chroma_store, get_collection
 
 @app.route('/api/firs', methods=['GET'])
 def get_firs():
@@ -48,7 +48,7 @@ def get_firs():
         initialize_chroma_store()
         total_sections = 0
         try:
-            total_sections = collection.count()
+            total_sections = get_collection().count()
         except:
             pass
             
@@ -75,7 +75,7 @@ def generate_fir():
     data = request.json
     
     # Required fields validation
-    required = ['complainant_name', 'complainant_address', 'complainant_city', 'complainant_phone', 'incident_location', 'incident_date', 'incident_time', 'complaint_text']
+    required = ['complainant_name', 'complainant_email', 'complaint_text']
     missing = [k for k in required if not data.get(k)]
     if missing:
         return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
@@ -227,24 +227,21 @@ def get_analytics():
 @app.route('/api/firs/<fir_num>/finalize', methods=['PUT'])
 def finalize_fir(fir_num):
     data = request.json
-    draft = data.get('draft')
     
-    if not draft:
-        return jsonify({"error": "Draft text is required"}), 400
-        
     try:
         db = Database()
-        # Decode the URL-safe FIR number back to original (FIR/2026/... -> passed as FIR%2F...)
         decoded_fir_num = fir_num.replace('_', '/')
-        
         mock_hash = "0xmockhash1234567890abcdef"
         
-        db.update_fir(decoded_fir_num, {
-            "status": "Finalized",
-            "draft": draft,
-            "tx_hash": mock_hash,
-            "updated_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
-        })
+        # Remove immutable or derived fields before update if necessary
+        if '_id' in data:
+            del data['_id']
+            
+        data["status"] = "Finalized"
+        data["tx_hash"] = mock_hash
+        data["updated_at"] = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
+        
+        db.update_fir(decoded_fir_num, data)
         
         return jsonify({
             "status": "success",
@@ -274,6 +271,226 @@ def download_pdf(fir_num):
         return jsonify({"error": "Not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+import base64
+import tempfile
+from groq import Groq
+
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+@app.route("/api/transcribe", methods=["POST"])
+def transcribe_audio():
+    """
+    Accepts audio file (FormData) from frontend,
+    sends it to Groq Whisper for transcription,
+    returns the transcribed text.
+    """
+    try:
+        if 'audio' not in request.files:
+            return jsonify({"error": "No audio file provided"}), 400
+            
+        audio_file = request.files['audio']
+        audio_bytes = audio_file.read()
+        audio_format = request.form.get('format', 'webm')
+
+        if not audio_bytes or len(audio_bytes) < 1000:
+             return jsonify({"error": "Audio too short or empty"}), 400
+
+        suffix = f".{audio_format.split(';')[0].split('/')[-1]}"
+        if suffix not in [".webm", ".ogg", ".mp4", ".wav", ".m4a"]:
+            suffix = ".webm"
+
+        # Write to temp file
+        with tempfile.NamedTemporaryFile(
+            suffix=suffix,
+            delete=False
+        ) as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = tmp.name
+
+        # Send to Groq Whisper
+        with open(tmp_path, "rb") as f:
+            transcription = client.audio.transcriptions.create(
+                model="whisper-large-v3",
+                file=f,
+                language="en",
+                response_format="text",
+                prompt="This is an Indian police complaint from Tamil Nadu. "
+                       "May contain dialogue between Police and Public. "
+                       "Speaker mentions Indian names, phone "
+                       "numbers, addresses, dates and times. "
+                       "Transcribe accurately."
+            )
+            
+        transcript_text = str(transcription).strip()
+        print(f"Transcription received: {transcript_text[:100]}")
+
+        # Cleanup temp file
+        os.unlink(tmp_path)
+
+        return jsonify({
+            "text": transcript_text,
+            "success": True
+        })
+
+    except Exception as e:
+        print(f"Transcription error: {str(e)}")
+        return jsonify({
+            "error": str(e),
+            "success": False
+        }), 500
+
+@app.route("/api/speech/extract-fields", methods=["POST"])
+def extract_fields_from_speech():
+    import json
+    from datetime import datetime, timedelta
+    
+    print("[Speech] Field extraction request received")
+    
+    try:
+        data = request.get_json()
+        if not data or 'transcript' not in data:
+            return jsonify({
+                "success": False,
+                "error": "No transcript provided"
+            }), 400
+            
+        transcript_text = data['transcript'].strip()
+        if not transcript_text:
+            return jsonify({
+                "success": False,
+                "error": "Empty transcript"
+            }), 400
+
+        # Extract fields using LLM
+        print("[Speech] Extracting fields with LLM...")
+        today = datetime.now()
+        today_str = today.strftime("%Y-%m-%d")
+        yesterday_str = (today - timedelta(days=1)).strftime(
+            "%Y-%m-%d"
+        )
+
+        extraction_prompt = f"""Extract form fields from this 
+Indian police complaint transcript. The transcript may be a dialogue between a Police Officer and the Public (complainant).
+Today is {today.strftime("%d %B %Y")}.
+Yesterday was {(today-timedelta(days=1)).strftime("%d %B %Y")}.
+
+TRANSCRIPT: "{transcript_text}"
+
+Rules:
+- "yesterday" date = {yesterday_str}
+- "today" date = {today_str}  
+- "last night" date = {yesterday_str}
+- Convert "10 PM" → "22:00", "6 AM" → "06:00"
+- Phone: extract 10 digits, remove spaces/dashes
+- IMPORTANT: If the transcript is a dialogue, extract the PUBLIC CITIZEN's details as the complainant. DO NOT extract the Police Officer's name.
+- If not mentioned → null
+
+Return ONLY this JSON, no other text:
+{{
+  "complainant": {{
+    "name": null,
+    "father_name": null,
+    "occupation": null,
+    "email": null,
+    "phone": null,
+    "age": null,
+    "address": null,
+    "city": null,
+    "state": null,
+    "gender": null,
+    "id_type": null,
+    "id_number": null
+  }},
+  "incident": {{
+    "date": null,
+    "time": null,
+    "location": null,
+    "landmark": null,
+    "station": null,
+    "district": null,
+    "city": null
+  }},
+  "accused_list": [
+    {{
+      "name": null,
+      "age": null,
+      "gender": null,
+      "relation": null,
+      "address": null
+    }}
+  ],
+  "witnesses_list": [
+    {{
+      "name": null,
+      "phone": null,
+      "address": null
+    }}
+  ],
+  "complaint_narrative": "A formally drafted police complaint paragraph in the first person from the complainant's perspective, based on the transcript.",
+  "missing_fields": [
+    "list field names that were not mentioned in speech"
+  ],
+  "confidence_notes": "any ambiguous extractions noted here"
+}}"""
+
+        try:
+            response = client.chat.completions.create(
+                model=PRIMARY_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You extract structured data from "
+                                   "speech. Return only valid JSON. "
+                                   "No markdown, no explanation."
+                    },
+                    {
+                        "role": "user",
+                        "content": extraction_prompt
+                    }
+                ],
+                max_tokens=4000,
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+
+            raw = response.choices[0].message.content.strip()
+            if raw.startswith("```json"):
+                raw = raw[7:]
+            if raw.startswith("```"):
+                raw = raw[3:]
+            if raw.endswith("```"):
+                raw = raw[:-3]
+            raw = raw.strip()
+            
+            extracted = json.loads(raw)
+        except Exception as e:
+            print(f"[Speech] JSON extraction failed: {str(e)}")
+            # Fallback to an empty skeleton so the frontend doesn't crash
+            extracted = {
+                "complainant": {},
+                "incident": {},
+                "accused": {},
+                "witnesses": [],
+                "complaint_narrative": "Could not automatically extract narrative. Please refer to the raw transcript.",
+                "missing_fields": []
+            }
+
+        print(f"[Speech] Extracted fields: "
+              f"{json.dumps(extracted, indent=2)[:300]}")
+
+        return jsonify({
+            "success": True,
+            "transcript": transcript_text,
+            "fields": extracted
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "fields": None
+        }), 500
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True, use_reloader=False, threaded=True)

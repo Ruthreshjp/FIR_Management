@@ -2530,7 +2530,7 @@
     "bailable": "Bailable",
     "court": "Any Magistrate",
     "corresponding_section": {
-      "BNS": "281"
+      "BNS": null
     },
     "source": "FIR_DATASET.csv"
   },
@@ -3230,7 +3230,7 @@
     "bailable": "Non-Bailable",
     "court": "Any Magistrate",
     "corresponding_section": {
-      "BNS": "115(2)"
+      "BNS": "116"
     },
     "source": "FIR_DATASET.csv"
   },

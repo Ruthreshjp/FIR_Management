@@ -6,7 +6,7 @@ from groq import Groq
 logger = logging.getLogger(__name__)
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 VERIFIER_MODEL = os.getenv("GROQ_MODEL_VERIFIER",
-                           "llama-3.1-8b-instant")
+                           "openai/gpt-oss-20b")
 
 
 def verify_sections(sections: list, facts: dict) -> list:
@@ -20,6 +20,103 @@ def verify_sections(sections: list, facts: dict) -> list:
     """
     if not sections or not isinstance(sections, list):
         return sections
+
+    print(f"[Verifier] Hard Rule Pre-filter starting with {len(sections)} sections")
+    pre_filtered = []
+    hard_rejected = []
+    
+    # Boolean flags from intake
+    animal_involved = str(facts.get("animal_involved", "")).lower() == "true"
+    human_hurt = str(facts.get("human_hurt", "")).lower() == "true"
+    cyber_method = str(facts.get("cyber_method", "")).lower() == "true"
+    force_used = str(facts.get("force_used", "")).lower() == "true"
+    property_taken = str(facts.get("property_taken", "")).lower() == "true"
+    
+    for s in sections:
+        sec = str(s.get("section_number", ""))
+        act = s.get("act", "").upper()
+        
+        # RULE 1: If animal involved but NO human hurt, reject all human physical assault sections
+        if animal_involved and not human_hurt:
+            if act == "IPC" and sec in ["323", "324", "325", "326", "302", "307", "354"]:
+                hard_rejected.append(f"{act} {sec} (Human assault rejected in animal case)")
+                continue
+            if act == "BNS" and sec in ["115", "116", "117", "118", "103", "109", "74"]:
+                hard_rejected.append(f"{act} {sec} (Human assault rejected in animal case)")
+                continue
+                
+        # RULE 2: If cyber method and NO physical force, reject Robbery / Dacoity
+        if cyber_method and not force_used:
+            if act == "IPC" and sec in ["392", "390", "393", "394", "395", "397"]:
+                hard_rejected.append(f"{act} {sec} (Robbery rejected in cyber fraud)")
+                continue
+            if act == "BNS" and sec in ["309", "310", "311"]:
+                hard_rejected.append(f"{act} {sec} (Robbery rejected in cyber fraud)")
+                continue
+                
+        # RULE 3: If no force was used, reject Robbery
+        if not force_used:
+            if act == "IPC" and sec in ["392", "393", "394", "397"]:
+                hard_rejected.append(f"{act} {sec} (Robbery rejected as no force used)")
+                continue
+            if act == "BNS" and sec in ["309", "310", "311"]:
+                hard_rejected.append(f"{act} {sec} (Robbery rejected as no force used)")
+                continue
+
+        # RULE 3B: If no property was actually taken, reject Robbery
+        if not property_taken:
+            if act == "IPC" and sec in ["392", "390", "393", "394", "395", "397"]:
+                hard_rejected.append(f"{act} {sec} (Robbery rejected as no property was taken)")
+                continue
+            if act == "BNS" and sec in ["309", "310", "311"]:
+                hard_rejected.append(f"{act} {sec} (Robbery rejected as no property was taken)")
+                continue
+
+        # RULE 4: If not dead, reject Murder
+        victim_status = str(facts.get("victim_status", "")).lower()
+        if "dead" not in victim_status and "death" not in victim_status:
+            if act == "IPC" and sec in ["302"]:
+                hard_rejected.append(f"{act} {sec} (Murder rejected as victim not dead)")
+                continue
+            if act == "BNS" and sec in ["103"]:
+                hard_rejected.append(f"{act} {sec} (Murder rejected as victim not dead)")
+                continue
+                
+        # RULE 5: If no minor involved, reject POCSO
+        minor_involved = str(facts.get("minor_involved", "")).lower() == "true"
+        if not minor_involved and act == "POCSO":
+            hard_rejected.append(f"{act} {sec} (POCSO rejected as no minor involved)")
+            continue
+            
+        # RULE 6: If force used AND property taken, reject Extortion (must be Robbery)
+        if force_used and property_taken:
+            if act == "IPC" and sec in ["384", "385", "386"]:
+                hard_rejected.append(f"{act} {sec} (Extortion rejected as force + theft = Robbery)")
+                continue
+            if act == "BNS" and sec in ["308"]:
+                hard_rejected.append(f"{act} {sec} (Extortion rejected as force + theft = Robbery)")
+                continue
+
+        # RULE 7: Conspiracy requires pre-planning
+        premeditated = str(facts.get("premeditated", "")).lower() == "true"
+        if not premeditated:
+            # We strictly reject conspiracy unless there is explicit planning
+            if act == "IPC" and sec in ["120B", "120A"]:
+                hard_rejected.append(f"{act} {sec} (Conspiracy rejected as no explicit pre-planning)")
+                continue
+            if act == "BNS" and sec in ["61", "61(2)"]:
+                hard_rejected.append(f"{act} {sec} (Conspiracy rejected as no explicit pre-planning)")
+                continue
+                
+        pre_filtered.append(s)
+
+    if hard_rejected:
+        print(f"[Verifier] Hard Rejected {len(hard_rejected)} sections: {', '.join(hard_rejected)}")
+        
+    if not pre_filtered:
+        return []
+        
+    sections = pre_filtered
 
     # Build facts summary for the verifier
     facts_summary = f"""
@@ -60,8 +157,8 @@ STRICT LEGAL RULES YOU MUST APPLY:
   Weapon threat alone = NO.
   
 - IPC 392 / BNS 309 (Robbery): 
-  YES only if force was used AND property was taken 
-  at the same time. Online fraud = NO.
+  YES only if force was used AND property was actually taken 
+  at the same time. No property taken = NO. Fleeing in vehicle = NO.
   
 - POCSO 4/5/6 (Penetrative Sexual Assault): 
   YES only if penetration EXPLICITLY mentioned. 
@@ -91,9 +188,9 @@ STRICT LEGAL RULES YOU MUST APPLY:
   YES only if accused was entrusted with property first.
   Fraud where victim was deceived = NO.
   
-- IPC 120B (Conspiracy): 
-  YES only if 2+ accused AND pre-planning evidence exists.
-  Single accused = NO.
+- IPC 120B / BNS 61 (Conspiracy): 
+  YES only if 2+ accused AND clear evidence of pre-planning/agreement.
+  Simply acting together or using weapons = NO.
   
 - IPC 34 / BNS 3(5) (Common Intention): 
   YES only if 2+ accused acted together.
@@ -184,6 +281,10 @@ ONLY output the numbered verdicts. Nothing else."""
         return verified
 
     except Exception as e:
+        logger.error(f"[Verifier] Error: {e}")
+        # On failure, return original sections unchanged
+        # Never let verifier failure break the pipeline
+        return sections
         logger.error(f"[Verifier] Error: {e}")
         # On failure, return original sections unchanged
         # Never let verifier failure break the pipeline

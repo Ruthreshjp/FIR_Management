@@ -1,4 +1,5 @@
 import re
+import json
 import random
 from io import BytesIO
 from datetime import datetime
@@ -274,39 +275,79 @@ def create_fir_pdf(fir_data):
     story.append(Paragraph("FIRST INFORMATION REPORT", title_style))
     story.append(Paragraph("(Record of Information Under Section 154 CrPC / Section 173 BNSS, 2023)", subtitle_style))
     
-    # 2. Metadata Table
-    date_str = fir_data.get("report_date", datetime.now().strftime("%d-%m-%Y %H:%M"))
-    police_station = fir_data.get("police_station", "Not specified")
-    district = fir_data.get("district", "Not specified")
-    complainant_name = fir_data.get("complainant_name", "Not specified")
-    complainant_email = fir_data.get("complainant_email", "Not specified")
-    status = fir_data.get("status", "Draft")
+    # --- Helper to handle empty fields ---
+    def get_val(key, default="Not Provided"):
+        val = fir_data.get(key)
+        if val is None or str(val).strip() == "":
+            return default
+        return str(val).strip()
+
+    # 2. Incident Details Table
+    story.append(Paragraph("1. INCIDENT DETAILS", section_heading))
+    incident_date = get_val("incident_date")
+    incident_time = get_val("incident_time")
+    incident_location = get_val("incident_location")
+    police_station = get_val("incident_station", get_val("police_station"))
+    district = get_val("incident_district", get_val("district"))
     
-    meta_data = [
-        [
-            Paragraph("FIR Number:", meta_label_style), Paragraph(fir_no, meta_val_style),
-            Paragraph("Report Date & Time:", meta_label_style), Paragraph(date_str, meta_val_style)
-        ],
-        [
-            Paragraph("Police Station:", meta_label_style), Paragraph(police_station, meta_val_style),
-            Paragraph("District / State:", meta_label_style), Paragraph(district, meta_val_style)
-        ],
-        [
-            Paragraph("Complainant Name:", meta_label_style), Paragraph(complainant_name, meta_val_style),
-            Paragraph("Complainant Email:", meta_label_style), Paragraph(complainant_email, meta_val_style)
-        ],
-        [
-            Paragraph("Investigation Status:", meta_label_style), Paragraph(f"<b>{status.upper()}</b>", meta_val_style),
-            Paragraph("Integrity Block Hash:", meta_label_style), Paragraph(f"<font size=5.5 face=Courier>{fir_data.get('blockchain_hash', 'PENDING')[:28]}...</font>", meta_val_style)
-        ]
+    inc_data = [
+        [Paragraph("Date of Occurrence:", meta_label_style), Paragraph(incident_date, meta_val_style)],
+        [Paragraph("Time of Occurrence:", meta_label_style), Paragraph(incident_time, meta_val_style)],
+        [Paragraph("Place of Occurrence:", meta_label_style), Paragraph(incident_location, meta_val_style)],
+        [Paragraph("Police Station:", meta_label_style), Paragraph(police_station, meta_val_style)],
+        [Paragraph("District:", meta_label_style), Paragraph(district, meta_val_style)]
     ]
+    
+    inc_table = Table(inc_data, colWidths=[2.0*inch, 5.2*inch])
+    inc_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E0')),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('LEFTPADDING', (0,0), (-1,-1), 6),
+    ]))
+    story.append(inc_table)
+    story.append(Spacer(1, 10))
+
+    # 3. Complainant Details Table
+    story.append(Paragraph("2. COMPLAINANT / INFORMANT DETAILS", section_heading))
+    
+    comp_name = get_val("complainant_name")
+    comp_father = get_val("complainant_father_name")
+    comp_age = get_val("complainant_age")
+    comp_gender = get_val("complainant_gender")
+    comp_occ = get_val("complainant_occupation")
+    comp_phone = get_val("complainant_phone")
+    comp_email = get_val("complainant_email")
+    comp_address = get_val("complainant_address")
+    
+    id_type = get_val("complainant_id_type", "")
+    id_num = get_val("complainant_id_number", "")
+    id_proof = f"{id_type} {id_num}".strip()
+    if not id_proof: id_proof = "Not Provided"
+
+    comp_data = [
+        [Paragraph("Name:", meta_label_style), Paragraph(comp_name, meta_val_style), Paragraph("Age/Gender:", meta_label_style), Paragraph(f"{comp_age} / {comp_gender}", meta_val_style)],
+        [Paragraph("Father/Husband Name:", meta_label_style), Paragraph(comp_father, meta_val_style), Paragraph("Occupation:", meta_label_style), Paragraph(comp_occ, meta_val_style)],
+        [Paragraph("Phone:", meta_label_style), Paragraph(comp_phone, meta_val_style), Paragraph("Email:", meta_label_style), Paragraph(comp_email, meta_val_style)],
+        [Paragraph("ID Proof:", meta_label_style), Paragraph(id_proof, meta_val_style), Paragraph("", meta_label_style), Paragraph("", meta_val_style)],
+        [Paragraph("Address:", meta_label_style), Paragraph(comp_address, meta_val_style), Paragraph("", meta_label_style), Paragraph("", meta_val_style)]
+    ]
+    
+    comp_table = Table(comp_data, colWidths=[1.5*inch, 2.1*inch, 1.5*inch, 2.1*inch])
+    comp_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E0')),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('LEFTPADDING', (0,0), (-1,-1), 6),
+        ('SPAN', (1, 4), (3, 4)) # Span address across remaining cols
+    ]))
     
     # Handle complainant photo if present
     complainant_photo = fir_data.get("complainant_photo")
-    
     if complainant_photo:
         try:
-            # Check if it's base64 or string path or BytesIO
             if isinstance(complainant_photo, bytes):
                 img_data = BytesIO(complainant_photo)
             elif isinstance(complainant_photo, str) and complainant_photo.startswith("data:image"):
@@ -316,78 +357,134 @@ def create_fir_pdf(fir_data):
             else:
                 img_data = complainant_photo
                 
-            photo_flowable = Image(img_data, width=0.85*inch, height=0.85*inch)
-            
-            # Re-construct metadata table to fit the photo on the side
-            meta_table = Table(meta_data, colWidths=[1.3*inch, 1.8*inch, 1.3*inch, 1.7*inch])
-            meta_table.setStyle(TableStyle([
-                ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
-                ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-                ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E0')),
-                ('LINELEFT', (0,0), (0,-1), 3.0, colors.HexColor('#E5C158')),
-                ('TOPPADDING', (0,0), (-1,-1), 4),
-                ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-                ('LEFTPADDING', (0,0), (-1,-1), 6),
-                ('RIGHTPADDING', (0,0), (-1,-1), 6),
-            ]))
-            
-            # Combine photo and table side-by-side
-            side_table = Table([[meta_table, photo_flowable]], colWidths=[6.1*inch, 1.1*inch])
-            side_table.setStyle(TableStyle([
-                ('VALIGN', (0,0), (-1,-1), 'TOP'),
-                ('ALIGN', (1,0), (1,0), 'RIGHT'),
-            ]))
+            photo_flowable = Image(img_data, width=1.0*inch, height=1.0*inch)
+            side_table = Table([[comp_table, photo_flowable]], colWidths=[6.0*inch, 1.2*inch])
+            side_table.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP')]))
             story.append(side_table)
-            
         except Exception:
-            # Fallback to normal table if image loading fails
-            meta_table = Table(meta_data, colWidths=[1.3*inch, 2.0*inch, 1.3*inch, 2.6*inch])
-            meta_table.setStyle(TableStyle([
-                ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
-                ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E0')),
-                ('LINELEFT', (0,0), (0,-1), 3.0, colors.HexColor('#E5C158')),
-                ('TOPPADDING', (0,0), (-1,-1), 4),
-                ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-                ('LEFTPADDING', (0,0), (-1,-1), 6),
-                ('RIGHTPADDING', (0,0), (-1,-1), 6),
-            ]))
-            story.append(meta_table)
+            story.append(comp_table)
     else:
-        # Standard configuration without photo
-        meta_table = Table(meta_data, colWidths=[1.3*inch, 2.0*inch, 1.3*inch, 2.6*inch])
-        meta_table.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
+        story.append(comp_table)
+        
+    story.append(Spacer(1, 10))
+
+    # 4. Accused Details
+    story.append(Paragraph("3. DETAILS OF KNOWN / SUSPECTED / UNKNOWN ACCUSED", section_heading))
+    accused_list = fir_data.get("accused_list", [])
+    if not accused_list:
+        # Fallback to old format if present
+        acc_name = get_val("accused_name", "")
+        if acc_name and acc_name != "Not Provided":
+            accused_list = [{"name": acc_name, "address": get_val("accused_description", "")}]
+            
+    if not accused_list:
+        story.append(Paragraph("Not Provided / Unknown", body_style))
+    else:
+        acc_data = [[Paragraph("<b>S.No</b>", meta_label_style), Paragraph("<b>Name</b>", meta_label_style), Paragraph("<b>Age/Gender</b>", meta_label_style), Paragraph("<b>Relation</b>", meta_label_style), Paragraph("<b>Address / Details</b>", meta_label_style)]]
+        for i, acc in enumerate(accused_list):
+            name = acc.get("name", "") or "Not Provided"
+            age = acc.get("age", "")
+            gender = acc.get("gender", "")
+            age_gender = f"{age} {gender}".strip() or "Not Provided"
+            rel = acc.get("relation", "") or "Not Provided"
+            addr = acc.get("address", "") or "Not Provided"
+            
+            acc_data.append([
+                Paragraph(str(i+1), meta_val_style),
+                Paragraph(name, meta_val_style),
+                Paragraph(age_gender, meta_val_style),
+                Paragraph(rel, meta_val_style),
+                Paragraph(addr, meta_val_style)
+            ])
+            
+        acc_table = Table(acc_data, colWidths=[0.5*inch, 1.5*inch, 1.0*inch, 1.2*inch, 3.0*inch])
+        acc_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#EDF2F7')),
             ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E0')),
-            ('LINELEFT', (0,0), (0,-1), 3.0, colors.HexColor('#E5C158')),
             ('TOPPADDING', (0,0), (-1,-1), 4),
             ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-            ('LEFTPADDING', (0,0), (-1,-1), 6),
-            ('RIGHTPADDING', (0,0), (-1,-1), 6),
         ]))
-        story.append(meta_table)
+        story.append(acc_table)
         
     story.append(Spacer(1, 10))
     
-    # 3. Facts Extracted
-    story.append(Paragraph("I. FACTS EXTRACTED BY INTAKE AGENT", section_heading))
-    story.extend(markdown_to_flowables(fir_data.get("facts", ""), styles))
-    story.append(Spacer(1, 8))
+    # 5. Witness Details
+    story.append(Paragraph("4. DETAILS OF WITNESSES", section_heading))
+    witnesses_list = fir_data.get("witnesses_list", [])
+    if not witnesses_list:
+        story.append(Paragraph("Not Provided", body_style))
+    else:
+        wit_data = [[Paragraph("<b>S.No</b>", meta_label_style), Paragraph("<b>Name</b>", meta_label_style), Paragraph("<b>Phone</b>", meta_label_style), Paragraph("<b>Address</b>", meta_label_style)]]
+        for i, wit in enumerate(witnesses_list):
+            name = wit.get("name", "") or "Not Provided"
+            phone = wit.get("phone", "") or "Not Provided"
+            addr = wit.get("address", "") or "Not Provided"
+            wit_data.append([
+                Paragraph(str(i+1), meta_val_style),
+                Paragraph(name, meta_val_style),
+                Paragraph(phone, meta_val_style),
+                Paragraph(addr, meta_val_style)
+            ])
+        wit_table = Table(wit_data, colWidths=[0.5*inch, 2.0*inch, 1.5*inch, 3.2*inch])
+        wit_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#EDF2F7')),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E0')),
+            ('TOPPADDING', (0,0), (-1,-1), 4),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]))
+        story.append(wit_table)
     
-    # 4. Legal Sections
-    story.append(Paragraph("II. APPLICABLE IPC & BNS LEGAL OFFENSES MAPPED", section_heading))
-    story.extend(markdown_to_flowables(fir_data.get("sections", ""), styles))
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 10))
     
-    # 5. FIR Draft
-    story.append(Paragraph("III. FINAL FORMAL DRAFT TEXT (DRAFTING AGENT)", section_heading))
-    story.extend(markdown_to_flowables(fir_data.get("draft", ""), styles))
+    # 6. Incident Facts / Narrative
+    story.append(Paragraph("5. STATEMENT / GIST OF FIR", section_heading))
+    try:
+        draft_str = str(fir_data.get("draft", "{}")).strip()
+        if draft_str.startswith("```json"):
+            draft_str = draft_str[7:]
+        if draft_str.endswith("```"):
+            draft_str = draft_str[:-3]
+        draft_json = json.loads(draft_str)
+        narrative = draft_json.get("narrative", fir_data.get("facts", "Not Provided"))
+        prayer = draft_json.get("prayer", "")
+    except Exception as e:
+        print("PDF rendering JSON parse error on draft:", e)
+        # If it's not valid JSON, it might just be raw text
+        narrative = fir_data.get("draft", fir_data.get("facts", "Not Provided"))
+        prayer = ""
+        
+    story.append(Paragraph(narrative, body_style))
+    story.append(Spacer(1, 10))
     
-    # 6. Case Notes History (if any)
+    if prayer:
+        story.append(Paragraph("<b>Action Requested:</b> " + prayer, body_style))
+        story.append(Spacer(1, 10))
+    
+    # 7. Legal Sections
+    story.append(Paragraph("6. LEGAL PROVISIONS INVOKED", section_heading))
+    
+    def render_section_list(title, sec_list):
+        if not sec_list: return
+        story.append(Paragraph(f"<b>{title}</b>", body_style))
+        for sec in sec_list:
+            if isinstance(sec, dict):
+                act = sec.get('act', '')
+                num = sec.get('section_number', '')
+                off = sec.get('offense', '')
+                story.append(Paragraph(f"&bull; {act} {num} - {off}", bullet_style))
+            else:
+                story.append(Paragraph(f"&bull; {sec}", bullet_style))
+        story.append(Spacer(1, 8))
+        
+    render_section_list("BNS Sections", fir_data.get("bns_sections", []))
+    render_section_list("IPC Sections", fir_data.get("ipc_sections", []))
+    render_section_list("Other Sections", fir_data.get("other_sections", []))
+    
+    # 8. Case Notes History (if any)
     notes = fir_data.get("case_notes", [])
     if notes:
         story.append(Spacer(1, 8))
-        story.append(Paragraph("IV. CASE JOURNAL UPDATES (INVESTIGATION TRACKING)", section_heading))
+        story.append(Paragraph("7. CASE JOURNAL UPDATES (INVESTIGATION TRACKING)", section_heading))
         notes_table_data = [[Paragraph("<b>Date/Time</b>", meta_label_style), Paragraph("<b>Officer</b>", meta_label_style), Paragraph("<b>Progress Journal Notes</b>", meta_label_style)]]
         
         for n in notes:

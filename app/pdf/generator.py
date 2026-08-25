@@ -144,16 +144,42 @@ def create_fir_pdf(fir_data: dict) -> bytes:
     # ─────────────────────────────────────────────────────
     # SECTION 1: Act & Sections
     # ─────────────────────────────────────────────────────
-    sec_data = fir_data.get('sections', [])
-    if isinstance(sec_data, str):
-        sec_text = sec_data.replace('\n', '<br/>')
-    else:
-        sec_text = "<br/>".join([
-            f"{s.get('act', 'Act')} - {s.get('section', '')} ({s.get('title', '')})" if isinstance(s, dict) else str(s)
-            for s in sec_data
-        ])
-    if not sec_text:
+    ipc_data = fir_data.get('ipc_sections', [])
+    bns_data = fir_data.get('bns_sections', [])
+    other_data = fir_data.get('other_sections', [])
+    
+    sec_lines = []
+    
+    if bns_data:
+        sec_lines.append("<b>Applicable BNS Sections:</b>")
+        for s in bns_data:
+            sec = s.get("section_number", s.get("section", ""))
+            title = s.get("title", s.get("offense", ""))
+            sec_lines.append(f"• BNS {sec} – {title}")
+            
+    if ipc_data:
+        if sec_lines:
+            sec_lines.append("")
+        sec_lines.append("<b>Applicable IPC Sections:</b>")
+        for s in ipc_data:
+            sec = s.get("section_number", s.get("section", ""))
+            title = s.get("title", s.get("offense", ""))
+            sec_lines.append(f"• IPC {sec} – {title}")
+            
+    if other_data:
+        if sec_lines:
+            sec_lines.append("")
+        sec_lines.append("<b>Other Acts/Sections:</b>")
+        for s in other_data:
+            act = s.get("act", "")
+            sec = s.get("section_number", s.get("section", ""))
+            title = s.get("title", s.get("offense", ""))
+            sec_lines.append(f"• {act} {sec} – {title}")
+
+    if not sec_lines:
         sec_text = "None provided"
+    else:
+        sec_text = "<br/>".join(sec_lines)
 
     s1 = make_table([["1. ACT & SECTION(S):", Paragraph(sec_text, p_body)]], [120, 379])
     story.append(s1)

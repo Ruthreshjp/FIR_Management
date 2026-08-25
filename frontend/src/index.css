@@ -506,3 +506,9 @@ textarea::placeholder {
   border-top: 1px solid #DDE3ED;
   margin: 16px 0;
 }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.9); }
+}
+

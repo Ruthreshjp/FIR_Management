@@ -390,6 +390,71 @@ def main():
     ]
     dataset.extend(IT_ACT_SECTIONS)
     print(f"Added {len(IT_ACT_SECTIONS)} manual IT Act sections")
+
+    NDPS_ACT_SECTIONS = [
+        {
+            "act": "NDPS Act",
+            "section_number": "8",
+            "offense": "Prohibition of certain operations",
+            "description": "No person shall produce, manufacture, possess, sell, purchase, transport, warehouse, use, consume, import inter-State, export inter-State, import into India, export from India or tranship any narcotic drug or psychotropic substance. Cocaine is a Schedule I narcotic drug under this Act.",
+            "punishment": "Rigorous imprisonment up to 20 years and fine up to Rs. 2 lakh for commercial quantity",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Special Court under NDPS Act",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "NDPS Act",
+            "section_number": "21",
+            "offense": "Punishment for contravention in relation to manufactured drugs and preparations",
+            "description": "Whoever contravenes any provision of this Act or any rule or order made thereunder in relation to any manufactured drug or any preparation containing any manufactured drug shall be punishable. Cocaine, heroin, morphine and similar substances fall under this section.",
+            "punishment": "Small quantity: 1 year. Intermediate: 10 years. Commercial quantity: 10-20 years with minimum 10 years mandatory",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Special Court under NDPS Act",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "NDPS Act",
+            "section_number": "27A",
+            "offense": "Punishment for financing illicit traffic and harboring offenders",
+            "description": "Whoever indulges in financing directly or indirectly any of the activities specified in sub-section (1) of section 2 or harbors any person engaged in any of the aforementioned activities.",
+            "punishment": "Rigorous imprisonment 10-20 years and fine Rs. 1-2 lakh",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Special Court under NDPS Act",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "NDPS Act",
+            "section_number": "29",
+            "offense": "Abetment and criminal conspiracy",
+            "description": "Whoever abets or is a party to a criminal conspiracy to commit an offence punishable under this Act shall be punishable with the punishment provided for that offence. Applies to organized drug gangs, networks, and all persons involved in the chain.",
+            "punishment": "Same as the principal offence",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Special Court under NDPS Act",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "NDPS Act",
+            "section_number": "36",
+            "offense": "Special Courts for NDPS offences",
+            "description": "The Government shall constitute Special Courts for the purpose of providing speedy trial of the offences under this Act.",
+            "punishment": "Procedural section",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Special Court under NDPS Act",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        }
+    ]
+    dataset.extend(NDPS_ACT_SECTIONS)
+    print(f"Added {len(NDPS_ACT_SECTIONS)} manual NDPS Act sections")
             
     # 2. Process BNS CSV
     # Need to reverse mapping: BNS -> primary IPC
@@ -421,6 +486,242 @@ def main():
                 "source": "bns_sections.csv"
             }
             dataset.append(item)
+
+    ADDITIONAL_SECTIONS = [
+
+        # ===== ARMS ACT =====
+        {
+            "act": "ARMS_ACT",
+            "section_number": "25",
+            "offense": "Punishment for illegal arms possession",
+            "description": "Whoever acquires, has in his possession "
+                           "or carries any firearm or ammunition "
+                           "without a valid licence. Includes "
+                           "country-made pistols, revolvers, rifles, "
+                           "swords, and prohibited arms.",
+            "punishment": "Up to 3 years or fine or both. "
+                          "Prohibited arms: minimum 7 years.",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Court of Session",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "ARMS_ACT",
+            "section_number": "27",
+            "offense": "Punishment for use of arms",
+            "description": "Whoever uses any arms or ammunition "
+                           "in contravention of this Act. Firing, "
+                           "brandishing, or threatening with an "
+                           "unlicensed weapon in public.",
+            "punishment": "3 to 7 years imprisonment and fine",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Court of Session",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+
+        # ===== MOTOR VEHICLES ACT =====
+        {
+            "act": "MOTOR_VEHICLES_ACT",
+            "section_number": "184",
+            "offense": "Driving dangerously — rash driving",
+            "description": "Whoever drives a motor vehicle at a "
+                           "speed or in a manner dangerous to the "
+                           "public. Rash driving, racing on public "
+                           "roads, dangerous overtaking.",
+            "punishment": "First: 6 months or Rs.1000. "
+                          "Second: 2 years or Rs.2000.",
+            "cognizable": "Cognizable",
+            "bailable": "Bailable",
+            "court": "Magistrate Court",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "MOTOR_VEHICLES_ACT",
+            "section_number": "185",
+            "offense": "Driving by a drunken person",
+            "description": "Whoever drives or attempts to drive a "
+                           "motor vehicle in any public place while "
+                           "under the influence of alcohol or drugs "
+                           "beyond permissible limit.",
+            "punishment": "First: 6 months or Rs.2000. "
+                          "Second: 2 years or Rs.3000.",
+            "cognizable": "Cognizable",
+            "bailable": "Bailable",
+            "court": "Magistrate Court",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "MOTOR_VEHICLES_ACT",
+            "section_number": "134",
+            "offense": "Hit and run — duty of driver in case of accident",
+            "description": "In case of accident, driver must stop "
+                           "and render assistance. Fleeing the scene "
+                           "after causing accident. Hit and run cases "
+                           "causing injury or death.",
+            "punishment": "3 months or Rs.500 or both",
+            "cognizable": "Cognizable",
+            "bailable": "Bailable",
+            "court": "Magistrate Court",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+
+        # ===== SC/ST ACT =====
+        {
+            "act": "SC_ST_ACT",
+            "section_number": "3(1)",
+            "offense": "Atrocities against SC/ST members",
+            "description": "Offences committed by non-SC/ST persons "
+                           "against SC/ST members including: using "
+                           "caste name to abuse or humiliate, "
+                           "forcing to do degrading acts, physical "
+                           "assault, wrongful occupation of land, "
+                           "social boycott, preventing from using "
+                           "public places.",
+            "punishment": "Minimum 6 months up to 5 years with fine",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Special Court",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "SC_ST_ACT",
+            "section_number": "3(2)",
+            "offense": "Enhanced punishment for IPC offences "
+                       "against SC/ST",
+            "description": "Whoever commits any offence under the "
+                           "IPC punishable with imprisonment for "
+                           "10 years or more against a person on "
+                           "the ground that such person is a member "
+                           "of SC/ST shall be punished with "
+                           "imprisonment for life.",
+            "punishment": "Imprisonment for life",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Special Court",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+
+        # ===== NI ACT =====
+        {
+            "act": "NI_ACT",
+            "section_number": "138",
+            "offense": "Dishonour of cheque for insufficiency of funds",
+            "description": "Where a cheque drawn by a person is "
+                           "returned by the bank unpaid because of "
+                           "insufficient funds or exceeds arrangement. "
+                           "Bounced cheque, dishonoured payment, "
+                           "cheque returned unpaid.",
+            "punishment": "Up to 2 years or fine up to twice the "
+                          "cheque amount or both",
+            "cognizable": "Non-Cognizable",
+            "bailable": "Bailable",
+            "court": "Judicial Magistrate First Class",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+
+        # ===== PREVENTION OF CORRUPTION =====
+        {
+            "act": "PREVENTION_OF_CORRUPTION",
+            "section_number": "7",
+            "offense": "Offence relating to bribery",
+            "description": "Public servant taking gratification "
+                           "other than legal remuneration in respect "
+                           "of an official act. Demanding bribe, "
+                           "accepting bribe, corruption by "
+                           "government officer or public servant.",
+            "punishment": "3 to 7 years and fine",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Special Judge",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+        {
+            "act": "PREVENTION_OF_CORRUPTION",
+            "section_number": "13",
+            "offense": "Criminal misconduct by public servant",
+            "description": "Public servant is guilty of criminal "
+                           "misconduct if he dishonestly or "
+                           "fraudulently misappropriates property, "
+                           "obtains valuable thing by corrupt means, "
+                           "possesses disproportionate assets.",
+            "punishment": "1 to 7 years and fine",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Special Judge",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+
+        # ===== JUVENILE JUSTICE ACT =====
+        {
+            "act": "JUVENILE_JUSTICE_ACT",
+            "section_number": "75",
+            "offense": "Punishment for cruelty to child",
+            "description": "Whoever assaults, abandons, abuses, "
+                           "exposes, or willfully neglects a child "
+                           "or causes or procures a child to be "
+                           "assaulted, abandoned, abused, exposed "
+                           "or neglected in a manner likely to cause "
+                           "unnecessary mental or physical suffering.",
+            "punishment": "Up to 3 years or fine up to Rs.1 lakh "
+                          "or both",
+            "cognizable": "Cognizable",
+            "bailable": "Bailable",
+            "court": "Children Court / JJ Board",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+
+        # ===== EXPLOSIVES ACT =====
+        {
+            "act": "EXPLOSIVES_ACT",
+            "section_number": "3",
+            "offense": "Punishment for causing explosion",
+            "description": "Whoever unlawfully and maliciously "
+                           "causes by any explosive substance an "
+                           "explosion of a nature likely to endanger "
+                           "life or cause serious injury to property. "
+                           "Bomb blast, IED, explosive device.",
+            "punishment": "Life imprisonment or death",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Court of Session",
+            "corresponding_section": {"BNS": None},
+            "source": "manual"
+        },
+
+        # ===== HUMAN TRAFFICKING =====
+        {
+            "act": "HUMAN_TRAFFICKING",
+            "section_number": "370",
+            "offense": "Trafficking of persons",
+            "description": "Whoever for the purpose of exploitation "
+                           "recruits, transports, harbours, transfers "
+                           "or receives a person by means of threat, "
+                           "force, fraud, or deception. Child "
+                           "trafficking, sex trafficking, forced "
+                           "labour, bonded labour.",
+            "punishment": "7 to 10 years and fine. "
+                          "Aggravated: 14 years to life.",
+            "cognizable": "Cognizable",
+            "bailable": "Non-Bailable",
+            "court": "Court of Session",
+            "corresponding_section": {"BNS": "143"},
+            "source": "manual"
+        },
+    ]
+    dataset.extend(ADDITIONAL_SECTIONS)
 
     # Output to JSON
     with open(output_json, "w", encoding="utf-8") as out:

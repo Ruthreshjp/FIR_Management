@@ -57,16 +57,6 @@ export default function AgentPipeline({ activeAgent, isComplete, draftContent, v
         </div>
       </div>
 
-      {draftContent && (
-        <div className="card" style={{ background: '#FAFAF8', padding: '24px' }}>
-          <div style={{ fontFamily: 'var(--sans)', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '16px' }}>
-            Draft Preview
-          </div>
-          <div className="draft-preview">
-            <ReactMarkdown>{draftContent}</ReactMarkdown>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

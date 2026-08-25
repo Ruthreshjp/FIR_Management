@@ -20,8 +20,22 @@ class Orchestrator:
         
         # 1. Intake
         yield {"agent": "Intake Agent", "type": "header", "message": "Extracting facts from complaint..."}
-        facts = self.intake.run(data)
+        facts_raw = self.intake.run(data)
         
+        try:
+            import json
+            facts_dict = json.loads(facts_raw)
+            # Merge LLM-extracted flags into data
+            for key in ["animal_involved", "human_hurt", "force_used", "property_taken", 
+                        "cyber_method", "sexual_offence", "premeditated", "minor_involved", 
+                        "accused_count", "weapon_used"]:
+                if key in facts_dict:
+                    data[key] = facts_dict[key]
+            
+            facts = facts_dict.get("facts", facts_raw)
+        except Exception:
+            facts = facts_raw
+            
         try:
             import re
             
@@ -138,35 +152,63 @@ class Orchestrator:
                           "marital", "domestic violence"]
             )
             
-            data["female_victim"] = any(
+            data["female_victim"] = data.get("female_victim", False) or any(
                 w in complaint_lower
                 for w in ["she", "her", "woman", "lady", "girl",
                           "wife", "daughter", "mother", "sister"]
             )
             
-            print(f"[Orchestrator] Facts: accused_count={data['accused_count']}, weapon={data.get('weapon_used')}, fled={data.get('accused_fled')}, premeditated={data['premeditated']}, minor={data['minor_involved']}, complaint_len={len(data.get('complaint_text', ''))}")
+            data["animal_involved"] = data.get("animal_involved", False) or any(
+                w in complaint_lower
+                for w in ["dog", "cat", "cow", "cattle", "animal", "pet", "puppy", "street dog"]
+            )
+            
+            data["sexual_offence"] = data.get("sexual_offence", False) or any(
+                w in complaint_lower
+                for w in ["rape", "molest", "sexual", "inappropriate", "private parts", "groped", "assaulted sexually"]
+            )
+            
+            print(f"[Orchestrator] Flags: animal={data.get('animal_involved')}, cyber={data.get('cyber_method')}, hurt={data.get('human_hurt')}, force={data.get('force_used')}")
         except Exception as e:
             print(f"[Orchestrator] Error parsing facts: {e}")
             pass
             
-        print(f"[Orchestrator] Intake Agent output (first 300 chars): {facts[:300]}")
-        yield {"agent": "Intake Agent", "type": "thought", "message": facts}
+        print(f"[Orchestrator] Intake Agent output (first 300 chars): {facts_raw[:300]}")
+        yield {"agent": "Intake Agent", "type": "thought", "message": facts_raw}
         
         # 2. Legal Mapping
         yield {"agent": "Legal Agent", "type": "header", "message": "Mapping facts to IPC & BNS sections..."}
-        sections = self.legal.run(facts, data)
+        sections = self.legal.run(facts_raw, data)
         
         # ADD THIS — second LLM verification pass:
         import json
         try:
             sections_list = json.loads(sections)
+            
+            # Ensure sections_list is a list
+            if isinstance(sections_list, dict):
+                if "selected_sections" in sections_list:
+                    sections_list = sections_list["selected_sections"]
+                elif "sections" in sections_list:
+                    sections_list = sections_list["sections"]
+                else:
+                    sections_list = []
+                    
+            if not isinstance(sections_list, list):
+                sections_list = []
+
             verified_sections_list = verify_sections(sections_list, data)
+            
+            if not isinstance(verified_sections_list, list):
+                verified_sections_list = []
+                
             verified_sections = json.dumps(verified_sections_list, indent=2)
             kept_count = len(verified_sections_list)
             total_count = len(sections_list)
         except Exception as e:
             print(f"[Orchestrator] Error parsing sections: {e}")
-            verified_sections = sections
+            verified_sections = "[]"
+            verified_sections_list = []
             kept_count = 0
             total_count = 0
             
@@ -184,10 +226,27 @@ class Orchestrator:
         # 4. Save to Database
         yield {"agent": "System", "type": "status", "message": "Saving FIR to database..."}
         
+        # Separate IPC and BNS sections
+        ipc_sections = []
+        bns_sections = []
+        other_sections = []
+        if isinstance(verified_sections_list, list):
+            for s in verified_sections_list:
+                act = s.get("act", "").upper()
+                if act == "IPC":
+                    ipc_sections.append(s)
+                elif act == "BNS":
+                    bns_sections.append(s)
+                else:
+                    other_sections.append(s)
+        
         fir_record = {
             "fir_number": f"FIR/{datetime.now().strftime('%Y/%m%d%H%M%S')}",
             "facts": facts,
-            "sections": sections,
+            "sections": verified_sections_list,
+            "ipc_sections": ipc_sections,
+            "bns_sections": bns_sections,
+            "other_sections": other_sections,
             "draft": draft,
             "status": "Draft",
             "created_at": datetime.now().isoformat()

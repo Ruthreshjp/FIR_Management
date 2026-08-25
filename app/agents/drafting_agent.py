@@ -2,8 +2,8 @@ import os
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 
-PRIMARY_MODEL = os.getenv("GROQ_MODEL_PRIMARY", "llama-3.3-70b-versatile")
-VERIFIER_MODEL = os.getenv("GROQ_MODEL_VERIFIER", "llama-3.1-8b-instant")
+PRIMARY_MODEL = os.getenv("GROQ_MODEL_PRIMARY", "openai/gpt-oss-120b")
+VERIFIER_MODEL = os.getenv("GROQ_MODEL_VERIFIER", "openai/gpt-oss-20b")
 
 class DraftingAgent:
     def __init__(self):
@@ -14,7 +14,8 @@ class DraftingAgent:
             timeout=120
         )
         self.prompt = PromptTemplate.from_template(
-            "You are drafting an official First Information Report (FIR) for the Indian Police.\n\n"
+            "You are a highly experienced Indian Police Officer drafting an official First Information Report (FIR).\n"
+            "Your tone must be strictly professional, objective, and legally precise. Do not use informal language.\n\n"
             "COMPLAINANT DETAILS:\n"
             "Name: {complainant_name}\n"
             "ID Proof: {id_proof}\n"
@@ -27,33 +28,20 @@ class DraftingAgent:
             "ACCUSED: {accused_info}\n\n"
             "WITNESSES: {witnesses_info}\n\n"
             "EXTRACTED FACTS:\n{facts}\n\n"
-            "LEGAL SECTIONS MATCHED (you MUST include ALL of these in the FIR "
-            "under 'Legal Provisions Invoked' — do not drop any):\n"
+            "VERIFIED LEGAL SECTIONS (You MUST include ALL of these in the FIR "
+            "under 'Legal Provisions Invoked' — do not drop any, and do not add any unverified sections):\n"
             "{sections}\n\n"
             "OFFICER DETAILS:\n"
             "Name: {officer_name}\n"
             "Rank: {officer_rank}\n"
             "Station: {officer_station}\n\n"
-            "Draft a complete FIR with these numbered sections in clean Markdown:\n"
-            "### 1. Complainant Details\n"
-            "### 2. Incident Details\n"
-            "Use a Markdown table with Who/What/When/Where/How rows.\n"
-            "### 3. Narrative\n"
-            "A formal prose paragraph describing the events.\n"
-            "### 4. Legal Provisions Invoked\n"
-            "List ALL the legal sections from above. For each one, include:\n"
-            "- Act name (IPC or BNS 2023)\n"
-            "- Section number\n"
-            "- Offense name\n"
-            "- One-line justification\n"
-            "The Legal Provisions section is MANDATORY — never omit it.\n"
-            "### 5. Witness Details\n"
-            "### 6. Action Requested\n"
-            "### 7. Prepared By\n"
-            "Use the exact Officer Name, Rank, and Station provided above.\n"
-            "DO NOT use [Name] or [Rank] or any placeholders.\n\n"
-            "Format the output in clean Markdown. Use ### for section headers, "
-            "**bold** for labels, and | tables | for structured data."
+            "You must return ONLY a JSON object strictly matching this schema:\n"
+            "{{\n"
+            "  \"narrative\": \"A formal, chronological prose paragraph describing the events clearly and objectively. Do not use dramatic language.\",\n"
+            "  \"prayer\": \"Briefly state the legal action requested by the complainant.\",\n"
+            "  \"witnesses\": \"Summary of witness details or 'None provided'.\"\n"
+            "}}\n"
+            "Return ONLY the JSON object. No other text."
         )
 
     def run(self, facts: str, sections: str, data: dict) -> str:
@@ -84,8 +72,8 @@ class DraftingAgent:
         else:
             witnesses_info = "None provided"
 
-        # Fallback: if sections string is empty, note it
-        if not sections or sections.strip() == "":
+        # Fallback: if sections string is empty or empty array/object, note it
+        if not sections or sections.strip() in ["", "[]", "{}", "null"]:
             sections = "No legal sections were matched. The drafting officer should determine applicable sections."
             print("[DraftingAgent] WARNING: Received empty sections from Legal Agent!")
 
@@ -109,4 +97,10 @@ class DraftingAgent:
             "facts": facts,
             "sections": sections
         })
-        return result.content
+        
+        raw_output = result.content.strip()
+        if raw_output.startswith("```json"):
+            raw_output = raw_output[7:]
+        if raw_output.endswith("```"):
+            raw_output = raw_output[:-3]
+        return raw_output.strip()

@@ -42,8 +42,8 @@ def correct_sections(raw_sections, facts):
                 s["act"] = "POCSO"
                 print(f"[Corrector] FIXED act field: BNS {sec} -> POCSO {sec} ({s.get('offense')})")
 
-    # RULE 1: Remove false positive robbery
-    is_cyber_fraud = any(w in complaint_lower for w in [
+    # Use LLM boolean flags primarily, fallback to keyword matching
+    is_cyber_fraud = str(facts.get("cyber_method", "")).lower() == "true" or any(w in complaint_lower for w in [
         "otp", "online fraud", "cyber", "phishing",
         "upi fraud", "bank fraud", "internet banking",
         "app download", "screen sharing", "remote access",
@@ -52,16 +52,21 @@ def correct_sections(raw_sections, facts):
         "account blocked", "account frozen", "verify account",
         "install app", "download app", "link sent", "claiming to be"
     ])
-    has_physical_force = any(w in complaint_lower for w in [
+    
+    has_physical_force = str(facts.get("force_used", "")).lower() == "true" or any(w in complaint_lower for w in [
         "hit", "punch", "slap", "push", "knife", "gun", "weapon",
         "physically attacked", "beat", "assault", "grabbed",
         "snatched physically", "held at gunpoint"
     ])
+    
     no_violence_phrases = [
         "no violence", "without violence", "no force used",
         "did not use force", "ran away without", "just ran",
         "no physical", "peacefully", "without touching"
     ]
+    
+    if str(facts.get("force_used", "")).lower() == "false":
+        has_physical_force = False
     
     if is_cyber_fraud:
         # FIX 3: Remove theft and criminal breach of trust in cyber cases
@@ -88,134 +93,149 @@ def correct_sections(raw_sections, facts):
         if len(sections) < original_count:
             print("[Corrector] REMOVED robbery — no violence explicitly stated")
 
-    # RULE 2: Cheating by Personation
-    personation_keywords = [
-        "impersonat", "posed as", "pretended to be",
-        "claimed to be", "introduced himself as",
-        "fake officer", "fake rbi", "fake police",
-        "fake bank", "disguised as", "masquerading",
-        "claiming to be", "posing as", "pretending",
-        "said he was", "told me he was", "identifying as",
-        "posing as a", "acting as a", "as an officer",
-        "as a manager", "bank manager", "rbi officer",
-        "police officer", "government officer",
-        "customs officer", "income tax officer"
-    ]
-    personation_found = any(w in complaint_lower for w in personation_keywords)
-    print(f"[Corrector] Personation check: {personation_found}")
-    print(f"[Corrector] Personation keywords found: {[w for w in personation_keywords if w in complaint_lower]}")
-    if personation_found:
-        sections.extend([
-            {"act": "IPC", "section_number": "419", "offense": "Cheating by personation", "justification": "Accused impersonated another person or government official to commit fraud", "bns_equivalent": "319", "confidence": 0.88, "primary": False},
-            {"act": "BNS", "section_number": "319", "offense": "Cheating by personation", "justification": "BNS equivalent of IPC 419", "confidence": 0.88, "primary": False}
-        ])
-
-    # RULE 3: Forgery
-    forgery_keywords = [
-        "fake document", "forged", "fake letterhead",
-        "fake id", "fabricated document", "fake stamp",
-        "counterfeit", "fake certificate", "fake letter",
-        "false document", "manufactured document",
-        "fake sbi", "fake rbi", "fake bank", "letterhead",
-        "fake logo", "fake seal", "official-looking",
-        "sent a document", "sent document on whatsapp",
-        "document on whatsapp", "fake notice", "fake"
-    ]
-    if any(w in complaint_lower for w in forgery_keywords):
-        sections.extend([
-            {"act": "IPC", "section_number": "468", "offense": "Forgery for purpose of cheating", "justification": "Fake document created and used to deceive the complainant", "bns_equivalent": "336", "confidence": 0.87, "primary": False},
-            {"act": "IPC", "section_number": "471", "offense": "Using forged document as genuine", "justification": "Forged document was presented as genuine to the complainant", "bns_equivalent": "336", "confidence": 0.87, "primary": False},
-            {"act": "BNS", "section_number": "336", "offense": "Forgery", "justification": "BNS equivalent of IPC 468/471", "confidence": 0.87, "primary": False}
-        ])
-
-    # RULE 4: Cybercrime / IT Act
-    if is_cyber_fraud:
-        sections.extend([
-            {"act": "IT Act", "section_number": "66C", "offense": "Identity theft", "justification": "Accused fraudulently used complainant's banking credentials and OTP", "confidence": 0.90, "primary": False},
-            {"act": "IT Act", "section_number": "66D", "offense": "Cheating by personation using computer resource", "justification": "Accused impersonated a government official using phone/app/WhatsApp to commit fraud", "confidence": 0.90, "primary": False}
-        ])
-
-    # RULE 5: Criminal Intimidation
-    if any(w in complaint_lower for w in ["threatened", "threat", "warned", "demanded", "pointed knife", "pointed gun", "at gunpoint", "at knifepoint", "will kill", "will harm", "if you report", "do not tell", "keep quiet or", "break your", "taught a lesson"]):
-        sections.extend([
-            {"act": "IPC", "section_number": "506", "offense": "Criminal Intimidation", "justification": "Accused made threats to cause fear of injury to person or property", "bns_equivalent": "351", "confidence": 0.85, "primary": False},
-            {"act": "BNS", "section_number": "351", "offense": "Criminal Intimidation", "justification": "BNS equivalent of IPC 506", "confidence": 0.85, "primary": False}
-        ])
-
-    # RULE 6: Domestic Violence
-    is_domestic = any(w in complaint_lower for w in ["husband", "wife", "spouse", "in-laws", "mother-in-law", "father-in-law", "sister-in-law", "brother-in-law", "dowry", "marital", "matrimonial", "domestic violence", "domestic abuse"])
-    if is_domestic:
-        sections.extend([
-            {"act": "IPC", "section_number": "498A", "offense": "Cruelty by husband or relatives of husband", "justification": "Accused is spouse or relative subjecting victim to cruelty, harassment or dowry demands", "bns_equivalent": "85", "confidence": 0.92, "primary": True},
-            {"act": "BNS", "section_number": "85", "offense": "Cruelty by husband or his relatives", "justification": "BNS equivalent of IPC 498A", "confidence": 0.92, "primary": True}
-        ])
-        
-    # Dowry Death Attempt - FIX 5
-    has_dowry = any(w in complaint_lower for w in ["dowry", "dowry demand", "harassing for dowry", "dowry harassment", "demands for dowry"])
-    victim_status = str(facts.get("victim_status", "")).lower()
-    if has_dowry and victim_status in ["dead", "critical"]:
-        sections.extend([
-            {"act": "IPC", "section_number": "304B", "offense": "Dowry death", "justification": "Dowry-related harassment that may lead to unnatural death", "bns_equivalent": "80", "confidence": 0.80, "primary": False},
-            {"act": "BNS", "section_number": "80", "offense": "Dowry death", "justification": "BNS equivalent of IPC 304B", "confidence": 0.80, "primary": False}
-        ])
-
-    is_weapon_assault = any(w in complaint_lower for w in ["rod", "stick", "belt", "wire", "beat", "thrash"])
-    if is_domestic and is_weapon_assault:
-        sections = [s for s in sections if str(s.get("section_number")) not in ["74", "354"]]
-        
-    # RULE 7: POCSO
-    has_penetration = any(w in complaint_lower for w in ["rape", "penetrat", "sexual intercourse", "inserted", "forced intercourse", "raped"])
-    if not has_penetration:
-        sections = [s for s in sections if str(s.get("section_number")) not in ["376", "376A", "376D", "64", "65", "66", "63"] or s.get("act") not in ["IPC", "BNS"]]
-        sections = [s for s in sections if not (s.get("act") == "POCSO" and str(s.get("section_number")) in ["4", "5", "6"])]
-
-    touching_keywords = [
-        "touched private", "touched inappropriately",
-        "private parts", "touched her body", "touched his body",
-        "fondled", "molested", "inappropriate touch",
-        "touched genitals", "inappropriately", "private area",
-        "touched her", "touched him", "physically abused",
-        "sexual abuse", "abuse"
-    ]
-    has_touching = any(w in complaint_lower for w in touching_keywords) or any(w in complaint_lower for w in ["sexual", "molest", "abuse", "rape"])
+    # Wrong BNS sections (BNS 4, BNS 12)
+    sections = [s for s in sections if not (s.get("act") == "BNS" and str(s.get("section_number")) in ["4", "5", "6", "7", "8", "9", "10", "11", "12"])]
     
-    if facts.get("minor_involved", False) and has_touching:
-        sections.extend([
-            {"act": "POCSO", "section_number": "8", "offense": "Punishment for sexual assault on child", "justification": "Accused committed sexual assault (non-penetrative) on a minor", "confidence": 0.92, "primary": True},
-            {"act": "POCSO", "section_number": "12", "offense": "Punishment for sexual harassment of child", "justification": "Accused sexually harassed a minor", "confidence": 0.88, "primary": False}
-        ])
-
-    # RULE 8: Intentional Insult
-    if any(w in complaint_lower for w in ["abused", "insulted", "filthy language", "obscene language", "abusive language", "vulgar language", "publicly humiliated", "called names", "verbal abuse", "slurred", "shouted abuses", "abused in public"]):
-        sections.extend([
-            {"act": "IPC", "section_number": "504", "offense": "Intentional insult with intent to provoke breach of peace", "justification": "Accused used abusive/filthy language intentionally to provoke and insult", "bns_equivalent": "352", "confidence": 0.83, "primary": False},
-            {"act": "BNS", "section_number": "352", "offense": "Intentional insult with intent to provoke breach of peace", "justification": "BNS equivalent of IPC 504", "confidence": 0.83, "primary": False}
-        ])
-        
-    # RULE 9: Mischief / Property Damage
-    if any(w in complaint_lower for w in ["broke", "broken", "destroyed", "damaged", "demolished", "smashed", "vandalized", "compound wall", "broke the wall", "damage to property", "property damaged", "tore down", "pulled down", "dismantled", "set fire", "burned", "burnt"]):
-        sections.extend([
-            {"act": "IPC", "section_number": "427", "offense": "Mischief causing damage", "justification": "Accused caused damage to complainant's property by breaking/destroying it", "bns_equivalent": "324", "confidence": 0.82, "primary": False},
-            {"act": "BNS", "section_number": "324", "offense": "Mischief causing damage", "justification": "BNS equivalent of IPC 427", "confidence": 0.82, "primary": False}
-        ])
-        
-    # RULE 10: Criminal Conspiracy
-    if int(facts.get("accused_count", 1)) >= 2 and (facts.get("premeditated", False) or facts.get("weapon_used") not in [None, "", "none"]):
-        sections.extend([
-            {"act": "IPC", "section_number": "120B", "offense": "Criminal Conspiracy", "justification": "Multiple accused acted with pre-planning or weapons", "bns_equivalent": "61(2)", "confidence": 0.90, "primary": False},
-            {"act": "BNS", "section_number": "61(2)", "offense": "Criminal Conspiracy", "justification": "BNS equivalent of IPC 120B", "confidence": 0.90, "primary": False}
-        ])
-
     # Replace IPC 503 with 506
     for s in sections:
         if s.get("act") == "IPC" and str(s.get("section_number")) == "503":
             s["section_number"] = "506"
             s["offense"] = "Criminal Intimidation"
             
-    # FIX 4: IPC 427 -> BNS 324 mapping update in place
-    for s in sections:
-        if s.get("act") == "IPC" and str(s.get("section_number")) == "427":
-            s["bns_equivalent"] = "324"
+    # Add strict removals
+    if str(facts.get("animal_involved", "")).lower() != "true":
+        original_count = len(sections)
+        sections = [s for s in sections if not (s.get("act") == "IPC" and str(s.get("section_number")) in ["428", "429"])]
+        sections = [s for s in sections if not (s.get("act") == "BNS" and str(s.get("section_number")) == "325")]
+        if len(sections) < original_count:
+            print("[Corrector] REMOVED animal mischief — no animal involved")
+
+    if str(facts.get("minor_involved", "")).lower() != "true":
+        original_count = len(sections)
+        sections = [s for s in sections if s.get("act") != "POCSO"]
+        if len(sections) < original_count:
+            print("[Corrector] REMOVED POCSO — no minor involved")
+            
+    victim_status = str(facts.get("victim_status", "")).lower()
+    if "dead" not in victim_status and "death" not in victim_status:
+        original_count = len(sections)
+        sections = [s for s in sections if not (s.get("act") == "IPC" and str(s.get("section_number")) == "302")]
+        sections = [s for s in sections if not (s.get("act") == "BNS" and str(s.get("section_number")) == "103")]
+        if len(sections) < original_count:
+            print("[Corrector] REMOVED Murder — victim is not dead")
+
+    # ------------------ PASS 2: STRUCTURAL RULES ------------------
+    try:
+        accused_count = int(facts.get("accused_count", 1))
+    except (ValueError, TypeError):
+        accused_count = 1
+
+    # 1. Common Intention — accused_count >= 2
+    if accused_count >= 2:
+        sections.extend([
+            {"act": "IPC", "section_number": "34", "offense": "Acts done by several persons in furtherance of common intention", "justification": "Multiple accused acting together", "confidence": 0.90, "primary": False},
+            {"act": "BNS", "section_number": "3(5)", "offense": "Acts done by several persons in furtherance of common intention", "justification": "BNS equivalent of IPC 34", "confidence": 0.90, "primary": False}
+        ])
+
+    # 2. Criminal Conspiracy — accused_count >= 2 AND premeditated
+    is_premeditated = str(facts.get("premeditated", "")).lower() == "true"
+    planning_keywords = ["planned", "conspired", "agreed beforehand", "plotted", "trap", "pre-planned", "ambush"]
+    has_planning_evidence = any(kw in complaint_lower for kw in planning_keywords)
+    
+    if accused_count >= 2 and (is_premeditated or has_planning_evidence):
+        sections.extend([
+            {"act": "IPC", "section_number": "120B", "offense": "Criminal Conspiracy", "justification": "Clear evidence of prior agreement or pre-planning", "confidence": 0.90, "primary": False},
+            {"act": "BNS", "section_number": "61(2)", "offense": "Criminal Conspiracy", "justification": "BNS equivalent of IPC 120B", "confidence": 0.90, "primary": False}
+        ])
+    else:
+        # STRICT RULE: Remove conspiracy if no clear planning
+        original_count = len(sections)
+        sections = [s for s in sections if not str(s.get("section_number")) in ["120B", "61", "61(2)"]]
+        if len(sections) < original_count:
+            print("[Corrector] STRICT RULE: REMOVED Conspiracy because no clear pre-planning was found.")
+
+    # 3. Unlawful Assembly — accused_count >= 3
+    if accused_count >= 3:
+        sections.extend([
+            {"act": "IPC", "section_number": "149", "offense": "Every member of unlawful assembly guilty of offence", "justification": "Group of persons acting unlawfully", "confidence": 0.85, "primary": False},
+            {"act": "BNS", "section_number": "190", "offense": "Every member of unlawful assembly guilty", "justification": "BNS equivalent of IPC 149", "confidence": 0.85, "primary": False}
+        ])
+
+    # 4. Absconding — accused_fled = True
+    if str(facts.get("accused_fled", "")).lower() in ["true", "yes"]:
+        sections.extend([
+            {"act": "IPC", "section_number": "201", "offense": "Causing disappearance of evidence of offence", "justification": "Accused fled the scene to avoid apprehension", "confidence": 0.80, "primary": False},
+            {"act": "BNS", "section_number": "238", "offense": "Causing disappearance of evidence", "justification": "BNS equivalent of IPC 201", "confidence": 0.80, "primary": False}
+        ])
+
+    # 5. Domestic Violence (IPC 498A) — marital_relationship = True
+    if str(facts.get("marital_relationship", "")).lower() in ["true", "yes"]:
+        sections.extend([
+            {"act": "IPC", "section_number": "498A", "offense": "Cruelty by husband or relatives of husband", "justification": "Domestic violence in marital relationship", "confidence": 0.92, "primary": True},
+            {"act": "BNS", "section_number": "85", "offense": "Cruelty by husband or his relatives", "justification": "BNS equivalent of IPC 498A", "confidence": 0.92, "primary": True}
+        ])
+
+    # 6. Grievous Hurt — weapon_used AND injury_occurred
+    weapon = facts.get("weapon_used", "")
+    has_weapon = weapon and str(weapon).lower() not in ["none", "unknown", "n/a", ""]
+    injury_occurred = "injured" in victim_status or "dead" in victim_status
+    if has_weapon and injury_occurred:
+        sections.extend([
+            {"act": "IPC", "section_number": "326", "offense": "Voluntarily causing grievous hurt by dangerous weapons", "justification": "Use of weapon resulting in injury", "confidence": 0.90, "primary": True},
+            {"act": "BNS", "section_number": "118", "offense": "Voluntarily causing grievous hurt by dangerous weapons", "justification": "BNS equivalent of IPC 326", "confidence": 0.90, "primary": True}
+        ])
+
+    # 7. Murder — victim_status = dead
+    if "dead" in victim_status or "death" in victim_status:
+        sections.extend([
+            {"act": "IPC", "section_number": "302", "offense": "Murder", "justification": "Death of the victim", "confidence": 0.95, "primary": True},
+            {"act": "BNS", "section_number": "103", "offense": "Murder", "justification": "BNS equivalent of IPC 302", "confidence": 0.95, "primary": True}
+        ])
+        
+    # 8. Robbery — force_used AND property_taken
+    force_used = str(facts.get("force_used", "")).lower() == "true"
+    property_taken = str(facts.get("property_taken", "")).lower() == "true"
+    if force_used and property_taken and not is_cyber_fraud:
+        sections.extend([
+            {"act": "IPC", "section_number": "392", "offense": "Robbery", "justification": "Property taken with use of force or threat", "confidence": 0.95, "primary": True},
+            {"act": "BNS", "section_number": "309", "offense": "Robbery", "justification": "BNS equivalent of IPC 392", "confidence": 0.95, "primary": True}
+        ])
+    else:
+        # STRICT RULE: Remove all robbery if property was not taken or force was not used
+        original_count = len(sections)
+        sections = [s for s in sections if not str(s.get("section_number")) in ["392", "390", "393", "394", "395", "397", "309", "310", "311"]]
+        if len(sections) < original_count:
+            print("[Corrector] STRICT RULE: REMOVED robbery because force_used AND property_taken were not BOTH true.")
+
+    # 9. Rash Driving / Vehicle Injury
+    vehicle_keywords = ["vehicle", "car", "bike", "motorcycle", "scooter", "truck", "bus", "driving", "rode", "hit and run"]
+    has_vehicle = any(kw in complaint_lower for kw in vehicle_keywords)
+    if has_vehicle and injury_occurred and not property_taken:
+        sections.extend([
+            {"act": "IPC", "section_number": "279", "offense": "Rash driving or riding on a public way", "justification": "Vehicle involved in rash manner", "confidence": 0.90, "primary": True},
+            {"act": "BNS", "section_number": "281", "offense": "Rash driving or riding on a public way", "justification": "BNS equivalent of IPC 279", "confidence": 0.90, "primary": True},
+            {"act": "IPC", "section_number": "337", "offense": "Causing hurt by act endangering life", "justification": "Injury caused by vehicle", "confidence": 0.90, "primary": True},
+            {"act": "BNS", "section_number": "125", "offense": "Act endangering life or personal safety of others", "justification": "BNS equivalent of IPC 337", "confidence": 0.90, "primary": True}
+        ])
+
+    # 10. Cheating (IPC 420 -> BNS 318)
+    has_ipc_420 = any(s.get("act") == "IPC" and str(s.get("section_number")) == "420" for s in sections)
+    has_bns_318 = any(s.get("act") == "BNS" and str(s.get("section_number")) == "318" for s in sections)
+    if has_ipc_420 and not has_bns_318:
+        # Find justification from IPC 420 if possible
+        ipc_420_section = next((s for s in sections if s.get("act") == "IPC" and str(s.get("section_number")) == "420"), None)
+        justification = ipc_420_section.get("justification", "BNS equivalent of IPC 420") if ipc_420_section else "BNS equivalent of IPC 420"
+        confidence = ipc_420_section.get("confidence", 0.90) if ipc_420_section else 0.90
+        
+        sections.append({
+            "act": "BNS", 
+            "section_number": "318", 
+            "offense": "Cheating and dishonestly inducing delivery of property", 
+            "justification": justification, 
+            "confidence": confidence, 
+            "primary": True
+        })
+        print("[Corrector] FORCE ADDED BNS 318 for IPC 420")
 
     # Deduplicate
     final_sections = []
@@ -227,3 +247,159 @@ def correct_sections(raw_sections, facts):
             final_sections.append(s)
 
     return final_sections
+
+DETERMINISTIC_RULES = [
+    # IF accused_count >= 2 → ALWAYS add IPC 34 + BNS 3(5)
+    {
+        "condition": lambda f: int(f.get("accused_count",1)) >= 2,
+        "always_add": [
+            {"act":"IPC","section_number":"34",
+             "offense":"Common Intention",
+             "justification":"Multiple accused acting together",
+             "confidence":1.0,"primary":False},
+            {"act":"BNS","section_number":"3(5)",
+             "offense":"Common Intention",
+             "justification":"BNS equivalent of IPC 34",
+             "confidence":1.0,"primary":False},
+        ]
+    },
+    # IF accused_count >= 2 AND premeditated → ALWAYS IPC 120B
+    {
+        "condition": lambda f: (
+            int(f.get("accused_count",1)) >= 2 and
+            f.get("premeditated", False)
+        ),
+        "always_add": [
+            {"act":"IPC","section_number":"120B",
+             "offense":"Criminal Conspiracy",
+             "justification":"Pre-planned act with multiple accused",
+             "confidence":1.0,"primary":False},
+        ]
+    },
+    # IF accused_count >= 3 → ALWAYS add unlawful assembly
+    {
+        "condition": lambda f: int(f.get("accused_count",1)) >= 3,
+        "always_add": [
+            {"act":"IPC","section_number":"149",
+             "offense":"Unlawful Assembly",
+             "justification":"Three or more persons with common object",
+             "confidence":1.0,"primary":False},
+            {"act":"BNS","section_number":"190",
+             "offense":"Unlawful Assembly",
+             "justification":"BNS equivalent of IPC 149",
+             "confidence":1.0,"primary":False},
+        ]
+    },
+    # IF victim_status == dead → ALWAYS IPC 302 + BNS 103
+    {
+        "condition": lambda f: f.get("victim_status") == "dead" or f.get("death", False),
+        "always_add": [
+            {"act":"IPC","section_number":"302",
+             "offense":"Murder",
+             "justification":"Death of victim confirmed",
+             "confidence":1.0,"primary":True},
+            {"act":"BNS","section_number":"103",
+             "offense":"Murder",
+             "justification":"BNS equivalent of IPC 302",
+             "confidence":1.0,"primary":True},
+        ]
+    },
+    # IF accused_fled → ALWAYS BNS 238 + IPC 201
+    {
+        "condition": lambda f: str(f.get("accused_fled", "")).lower() in ["true", "yes"],
+        "always_add": [
+            {"act":"IPC","section_number":"201",
+             "offense":"Causing disappearance of evidence",
+             "justification":"Accused fled scene after offence",
+             "confidence":0.95,"primary":False},
+            {"act":"BNS","section_number":"238",
+             "offense":"Causing disappearance of evidence",
+             "justification":"BNS equivalent of IPC 201",
+             "confidence":0.95,"primary":False},
+        ]
+    },
+    # IF marital_relationship → ALWAYS IPC 498A + BNS 85
+    {
+        "condition": lambda f: str(f.get("marital_relationship","")).lower() in ["true", "yes"],
+        "always_add": [
+            {"act":"IPC","section_number":"498A",
+             "offense":"Cruelty by husband",
+             "justification":"Domestic violence by spouse",
+             "confidence":0.95,"primary":True},
+            {"act":"BNS","section_number":"85",
+             "offense":"Cruelty by husband",
+             "justification":"BNS equivalent of IPC 498A",
+             "confidence":0.95,"primary":True},
+        ]
+    },
+    # IF minor + sexual touching → ALWAYS POCSO 8 + POCSO 12
+    {
+        "condition": lambda f: (
+            str(f.get("minor_involved", "")).lower() in ["true", "yes"] and
+            f.get("sexual_element", False) and
+            not f.get("penetration_occurred", False)
+        ),
+        "always_add": [
+            {"act":"POCSO","section_number":"8",
+             "offense":"Sexual Assault on child",
+             "justification":"Non-penetrative sexual assault on minor",
+             "confidence":0.95,"primary":True},
+            {"act":"POCSO","section_number":"12",
+             "offense":"Sexual Harassment of child",
+             "justification":"Sexual harassment of minor",
+             "confidence":0.90,"primary":False},
+        ]
+    },
+    # IF drugs mentioned → ALWAYS NDPS 8 + NDPS 21
+    {
+        "condition": lambda f: f.get("drug_involved", False),
+        "always_add": [
+            {"act":"NDPS_ACT","section_number":"8",
+             "offense":"Prohibition on narcotic drugs",
+             "justification":"Narcotic substance involved",
+             "confidence":0.95,"primary":True},
+            {"act":"NDPS_ACT","section_number":"21",
+             "offense":"Punishment for drug offence",
+             "justification":"Sale/possession of narcotic drug",
+             "confidence":0.95,"primary":True},
+        ]
+    },
+    # IF weapon used AND injury → ALWAYS IPC 326 + BNS 118
+    {
+        "condition": lambda f: (
+            f.get("weapon_used") not in [None,"","none","unknown"]
+            and (f.get("injury_occurred", False) or "injured" in str(f.get("victim_status", "")).lower())
+        ),
+        "always_add": [
+            {"act":"IPC","section_number":"326",
+             "offense":"Grievous Hurt by dangerous weapon",
+             "justification":"Weapon caused actual injury",
+             "confidence":0.92,"primary":False},
+            {"act":"BNS","section_number":"118",
+             "offense":"Grievous Hurt by dangerous weapon",
+             "justification":"BNS equivalent of IPC 326",
+             "confidence":0.92,"primary":False},
+        ]
+    },
+]
+
+def apply_deterministic_rules(sections, facts):
+    seen = {(s.get("act"), str(s.get("section_number")))
+            for s in sections}
+    added = []
+    
+    for rule in DETERMINISTIC_RULES:
+        try:
+            if rule["condition"](facts):
+                for s in rule["always_add"]:
+                    key = (s["act"], str(s["section_number"]))
+                    if key not in seen:
+                        seen.add(key)
+                        added.append(s)
+                        print(f"[Rules] AUTO-ADDED: "
+                              f"{s['act']} {s['section_number']}"
+                              f" — {s['offense']}")
+        except Exception as e:
+            print(f"[Rules] Rule error: {e}")
+    
+    return sections + added

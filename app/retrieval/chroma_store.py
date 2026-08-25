@@ -3,18 +3,29 @@ import json
 import chromadb
 from chromadb.config import Settings
 
-# Simple in-memory ChromaDB instance for demonstration purposes
-chroma_client = chromadb.Client(Settings(is_persistent=False))
-collection_name = "ipc_bns_laws"
-collection = chroma_client.get_or_create_collection(name=collection_name)
-
+# We will use lazy initialization to prevent blocking on import
+chroma_client = None
+collection = None
 _INITIALIZED = False
 
+def get_collection():
+    global chroma_client, collection
+    if collection is None:
+        persist_dir = os.path.join(os.path.dirname(__file__), "..", "..", "data", "chroma_db")
+        chroma_client = chromadb.PersistentClient(path=persist_dir)
+        collection = chroma_client.get_or_create_collection(name="ipc_bns_laws")
+    return collection
+    
 def initialize_chroma_store():
     global _INITIALIZED
     if _INITIALIZED:
         return
-    
+        
+    c = get_collection()
+    if c.count() > 0:
+        _INITIALIZED = True
+        return
+        
     # Load dataset from data directory
     data_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "ipc_bns_dataset.json")
     if not os.path.exists(data_path):
@@ -48,18 +59,19 @@ def initialize_chroma_store():
         ids.append(f"law_{i}")
         
     if documents:
-        collection.add(
+        c.add(
             documents=documents,
             metadatas=metadatas,
             ids=ids
         )
     _INITIALIZED = True
 
-def search_legal_sections(query: str, top_k: int = 4) -> list:
+def search_legal_sections(query: str, top_k: int = 10) -> list:
     """Queries the ChromaDB collection for matching legal sections."""
     initialize_chroma_store()
     try:
-        results = collection.query(
+        c = get_collection()
+        results = c.query(
             query_texts=[query],
             n_results=top_k
         )

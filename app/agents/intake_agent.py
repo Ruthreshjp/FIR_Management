@@ -2,8 +2,8 @@ import os
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 
-PRIMARY_MODEL = os.getenv("GROQ_MODEL_PRIMARY", "llama-3.3-70b-versatile")
-VERIFIER_MODEL = os.getenv("GROQ_MODEL_VERIFIER", "llama-3.1-8b-instant")
+PRIMARY_MODEL = os.getenv("GROQ_MODEL_PRIMARY", "openai/gpt-oss-120b")
+VERIFIER_MODEL = os.getenv("GROQ_MODEL_VERIFIER", "openai/gpt-oss-20b")
 
 class IntakeAgent:
     def __init__(self):
@@ -14,7 +14,7 @@ class IntakeAgent:
             timeout=120
         )
         self.prompt = PromptTemplate.from_template(
-            "Extract structured facts (Who, What, When, Where, Why/How) from the following crime complaint and structured fields.\n\n"
+            "Extract structured facts and explicit boolean flags from the following crime complaint.\n\n"
             "Complainant Name: {complainant_name}\n"
             "Complainant ID Proof: {id_proof}\n"
             "Complainant Home Address: {complainant_address}\n"
@@ -22,11 +22,25 @@ class IntakeAgent:
             "Incident Location: {incident_location}\n"
             "Witnesses: {witnesses}\n"
             "Complaint Narrative: {complaint}\n\n"
-            "Return the facts clearly formatted as a markdown list."
+            "Return a strictly valid JSON object with EXACTLY these keys:\n"
+            "{{\n"
+            "  \"facts\": \"A clear, bulleted summary of Who, What, When, Where, Why/How.\",\n"
+            "  \"animal_involved\": true/false,\n"
+            "  \"human_hurt\": true/false,\n"
+            "  \"force_used\": true/false,\n"
+            "  \"property_taken\": true/false,\n"
+            "  \"cyber_method\": true/false,\n"
+            "  \"sexual_offence\": true/false,\n"
+            "  \"premeditated\": true/false,\n"
+            "  \"minor_involved\": true/false,\n"
+            "  \"accused_count\": 1 (integer),\n"
+            "  \"weapon_used\": \"name of weapon or 'none'\"\n"
+            "}}\n"
+            "Only return the JSON. No markdown backticks."
         )
         
     def run(self, data: dict) -> str:
-        """Extracts structured facts from the raw complaint text."""
+        """Extracts structured facts and boolean flags from the raw complaint text."""
         witnesses_str = ", ".join([f"{w.get('name', '')} ({w.get('phone', '')})" for w in data.get('witnesses', [])]) if data.get('witnesses') else "None provided"
         
         id_proof_str = f"{data.get('complainant_id_type', '')} - {data.get('complainant_id_number', '')}".strip(" -")
@@ -44,4 +58,23 @@ class IntakeAgent:
             "witnesses": witnesses_str,
             "complaint": data.get("complaint_text", "")
         })
-        return result.content
+        
+        import json
+        content = result.content.strip()
+        if content.startswith("```json"):
+            content = content[7:-3].strip()
+        elif content.startswith("```"):
+            content = content[3:-3].strip()
+            
+        try:
+            parsed = json.loads(content)
+            # Merge original complaint text so downstream has it
+            parsed["complaint_text"] = data.get("complaint_text", "")
+            return json.dumps(parsed)
+        except Exception:
+            # Fallback
+            fallback = {
+                "facts": content,
+                "complaint_text": data.get("complaint_text", "")
+            }
+            return json.dumps(fallback)
