@@ -46,16 +46,6 @@ def keyword_search_fallback(query: str, dataset: list, top_k: int = 10) -> list:
         
     return ranked_items
 
-# ----------------- ChromaDB Setup -----------------
-CHROMA_AVAILABLE = False
-
-try:
-    import chromadb
-    from sentence_transformers import SentenceTransformer
-    CHROMA_AVAILABLE = True
-except ImportError:
-    pass
-
 class SemanticRAG:
     def __init__(self):
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -63,19 +53,10 @@ class SemanticRAG:
         self.chroma_path = os.path.join(base_dir, "data", "chroma_db")
         self.dataset = self.load_dataset()
         self.use_chroma = False
-        
-        if CHROMA_AVAILABLE:
-            try:
-                logger.info("Connecting to Persistent ChromaDB at data/chroma_db...")
-                # We do NOT create embeddings on the fly anymore. We assume rebuild_chromadb.py was run.
-                self.model = SentenceTransformer("all-MiniLM-L6-v2")
-                self.chroma_client = chromadb.PersistentClient(path=self.chroma_path)
-                self.collection = self.chroma_client.get_collection("legal_sections")
-                self.use_chroma = True
-                logger.info(f"Connected to ChromaDB successfully. Collection has {self.collection.count()} items.")
-            except Exception as e:
-                logger.error(f"Failed to connect to ChromaDB or embeddings: {str(e)}. Defaulting to fallback mode.")
-                self.use_chroma = False
+        self._initialized = False
+        self.model = None
+        self.chroma_client = None
+        self.collection = None
 
     def load_dataset(self):
         if os.path.exists(self.dataset_path):
@@ -86,11 +67,43 @@ class SemanticRAG:
                 pass
         return []
 
+    def _initialize(self):
+        if self._initialized:
+            return
+            
+        self._initialized = True
+        try:
+            import chromadb
+            from sentence_transformers import SentenceTransformer
+            
+            logger.info("Connecting to Persistent ChromaDB at data/chroma_db...")
+            self.model = SentenceTransformer("all-MiniLM-L6-v2")
+            self.chroma_client = chromadb.PersistentClient(path=self.chroma_path)
+            self.collection = self.chroma_client.get_collection("legal_sections")
+            self.use_chroma = True
+            
+            count = self.collection.count()
+            logger.info(f"Connected to ChromaDB successfully. Collection has {count} items.")
+            print(f"\n[DIAGNOSTICS] ChromaDB Initialized! Collection size: {count} documents.\n")
+        except ImportError:
+            logger.error("ChromaDB or sentence_transformers not installed. Defaulting to fallback mode.")
+            print("\n[DIAGNOSTICS] ChromaDB failed - Imports missing.\n")
+            self.use_chroma = False
+        except Exception as e:
+            logger.error(f"Failed to connect to ChromaDB or embeddings: {str(e)}. Defaulting to fallback mode.")
+            print(f"\n[DIAGNOSTICS] ChromaDB connection failed: {e}\n")
+            self.use_chroma = False
+
     def search(self, query: str, top_k: int = 10) -> list:
         """
         Searches the legal database. Utilizes Chroma semantic search or keyword fallback.
         Returns a list of matching items.
         """
+        self._initialize()
+        
+        print(f"\n[DIAGNOSTICS] RAG Search Query: '{query}'")
+        retrieved_items = []
+
         if self.use_chroma:
             try:
                 query_vector = self.model.encode([query]).tolist()
@@ -99,7 +112,6 @@ class SemanticRAG:
                     n_results=top_k
                 )
                 
-                retrieved_items = []
                 metas = results.get("metadatas", [[]])[0]
                 for meta in metas:
                     # Map the raw metadata back into the format expected by the LLM
@@ -114,11 +126,20 @@ class SemanticRAG:
                         "corresponding_ipc": meta.get("corresponding_ipc")
                     })
                 if retrieved_items:
+                    print(f"[DIAGNOSTICS] ChromaDB Retrieved {len(retrieved_items)} sections:")
+                    for item in retrieved_items:
+                        print(f"   -> {item.get('act')} {item.get('section_number')}: {item.get('offense')}")
                     return retrieved_items
             except Exception as e:
                 logger.error(f"Semantic search failed: {str(e)}. Using keyword search fallback.")
+                print(f"[DIAGNOSTICS] ChromaDB search error: {e}")
                 
-        return keyword_search_fallback(query, self.dataset, top_k)
+        print("[DIAGNOSTICS] Using Keyword Fallback for search.")
+        retrieved_items = keyword_search_fallback(query, self.dataset, top_k)
+        print(f"[DIAGNOSTICS] Fallback Retrieved {len(retrieved_items)} sections:")
+        for item in retrieved_items:
+            print(f"   -> {item.get('act')} {item.get('section_number')}: {item.get('offense')}")
+        return retrieved_items
 
 # Global Instance of RAG
 rag_instance = SemanticRAG()

@@ -52,6 +52,19 @@ ALLOWED_SECTIONS = {
         "BNS": ["316", "318", "336", "338", "3(5)", "61"],
         "IPC": ["406", "420", "467", "468", "471", "34", "120B"]
     },
+    "Domestic Violence / Cruelty": {
+        "BNS": ["85", "86", "3(5)"],
+        "IPC": ["498A", "304B", "34"]
+    },
+    "Wrongful Confinement": {
+        "BNS": ["127", "126", "3(5)"],
+        "IPC": ["342", "340", "34"]
+    },
+    "IT Act Offences / Cyber Threat": {
+        "BNS": ["351", "74", "318", "3(5)", "61"],
+        "IPC": ["506", "503", "354C", "420", "34", "120B"],
+        "IT Act": ["66C", "66D", "66E", "67", "67A"]
+    },
     "Others": {
         # 'Others' acts as a fallback to allow any section if the classifier fails to find a specific category.
     }

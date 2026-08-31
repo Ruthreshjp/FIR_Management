@@ -118,12 +118,13 @@ def get_laws():
         def format_record(r, act_name):
             return {
                 "act": act_name,
-                "section_number": r.get('Section', ''),
-                "section_name": r.get('Offense', r.get('offense', r.get('Description', r.get('description', '')))),
-                "description": r.get('Punishment', r.get('punishment', '')),
-                "cognizable": r.get('Cognizable', r.get('cognizable', '')),
-                "bailable": r.get('Bailable', r.get('bailable', '')),
-                "corresponding_section": r.get('Corresponding Section', r.get('corresponding_section', ''))
+                "section_number": str(r.get('Section', r.get('section_number', ''))),
+                "section_name": str(r.get('Offense', r.get('offense', r.get('title', '')))),
+                "description": str(r.get('Description', r.get('description', ''))),
+                "punishment": str(r.get('Punishment', r.get('punishment', ''))),
+                "cognizable": str(r.get('Cognizable', r.get('cognizable', ''))),
+                "bailable": str(r.get('Bailable', r.get('bailable', ''))),
+                "corresponding_section": str(r.get('Corresponding Section', r.get('corresponding_section', '')))
             }
 
         if search:
@@ -262,11 +263,12 @@ def download_pdf(fir_num):
         
         if final_record:
             pdf_bytes = create_fir_pdf(final_record)
+            is_download = request.args.get('download', 'false').lower() == 'true'
             return send_file(
                 io.BytesIO(pdf_bytes),
                 mimetype='application/pdf',
-                as_attachment=True,
-                download_name=f"{decoded_fir_num.replace('/', '_')}.pdf"
+                as_attachment=is_download,
+                download_name=f"{decoded_fir_num.replace('/', '_')}.pdf" if is_download else None
             )
         return jsonify({"error": "Not found"}), 404
     except Exception as e:

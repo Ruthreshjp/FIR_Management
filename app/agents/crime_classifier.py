@@ -53,13 +53,23 @@ class CrimeClassifierAgent:
             })
             
             raw_output = result.content.strip()
-            if raw_output.startswith("```json"):
-                raw_output = raw_output[7:]
-            if raw_output.endswith("```"):
-                raw_output = raw_output[:-3]
-            raw_output = raw_output.strip()
+            import re
+            match = re.search(r'\[.*\]', raw_output, re.DOTALL)
+            if match:
+                raw_output = match.group(0)
+            else:
+                if raw_output.startswith("```json"):
+                    raw_output = raw_output[7:]
+                if raw_output.endswith("```"):
+                    raw_output = raw_output[:-3]
+                raw_output = raw_output.strip()
             
-            categories = json.loads(raw_output)
+            try:
+                categories = json.loads(raw_output)
+            except json.JSONDecodeError:
+                print(f"[CrimeClassifier] JSON Decode failed on text: {raw_output}")
+                categories = ["Others"]
+
             if not isinstance(categories, list):
                 categories = ["Others"]
                 

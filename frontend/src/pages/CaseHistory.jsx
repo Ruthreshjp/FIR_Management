@@ -49,13 +49,13 @@ export default function CaseHistory() {
   })
 
   const handleView = (fir) => {
-    setActiveFir(fir)
-    setSlideOpen(true)
+    const encoded = fir.fir_number.replace(/\//g, '_')
+    window.open(`http://localhost:5000/api/firs/${encoded}/pdf?download=false`, '_blank')
   }
 
   const handleDownload = (fir_num) => {
     const encoded = fir_num.replace(/\//g, '_')
-    window.open(`http://localhost:5000/api/firs/${encoded}/pdf`, '_blank')
+    window.location.href = `http://localhost:5000/api/firs/${encoded}/pdf?download=true`
   }
 
   return (

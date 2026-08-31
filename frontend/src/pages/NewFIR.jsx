@@ -7,28 +7,35 @@ import DraftEditor from '../components/DraftEditor'
 
 const initialFormState = {
   complainant_name: '',
-  complainant_father_name: '',
+  complainant_guardian_type: 'Father',
+  complainant_guardian_name: '',
   complainant_occupation: '',
   complainant_email: '',
   complainant_phone: '',
   complainant_age: '',
   complainant_gender: '',
+  complainant_nationality: 'Indian',
   complainant_id_type: '',
   complainant_id_number: '',
   complainant_address: '',
+  complainant_permanent_address: '',
   incident_date: '',
   incident_time: '',
   incident_location: '',
   incident_station: '',
   incident_district: '',
+  complaint_text: '',
   accused_list: [],
   witnesses_list: [],
-  complaint_text: ''
+  properties_list: [],
+  medical_treatment: '',
+  medical_details: '',
+  delay_reason: ''
 }
 
 export default function NewFIR() {
   const { profile } = useProfile()
-  const [inputMode, setInputMode] = useState('speech') // 'speech' | 'manual'
+  const [inputMode, setInputMode] = useState('speech')
 
   const [formData, setFormData] = useState(initialFormState)
 
@@ -113,7 +120,10 @@ export default function NewFIR() {
       if (fields.complainant?.id_type) updated.complainant_id_type = fields.complainant.id_type;
       if (fields.complainant?.id_number) updated.complainant_id_number = fields.complainant.id_number;
 
-      if (fields.complainant?.father_name) updated.complainant_father_name = fields.complainant.father_name;
+      if (fields.complainant?.father_name) {
+         updated.complainant_guardian_type = 'Father';
+         updated.complainant_guardian_name = fields.complainant.father_name;
+      }
       if (fields.complainant?.occupation) updated.complainant_occupation = fields.complainant.occupation;
 
       // Incident fields
@@ -125,12 +135,28 @@ export default function NewFIR() {
 
       // Accused
       if (fields.accused_list && Array.isArray(fields.accused_list)) {
-        updated.accused_list = fields.accused_list;
+        updated.accused_list = fields.accused_list.map(a => ({
+           name: a.name || '',
+           father_name: a.father_name || '',
+           age: a.age || '',
+           gender: a.gender || '',
+           address: a.address || '',
+           identifying_marks: a.identifying_marks || ''
+        }));
       }
 
       // Witnesses
       if (fields.witnesses_list && Array.isArray(fields.witnesses_list)) {
-        updated.witnesses_list = fields.witnesses_list;
+        updated.witnesses_list = fields.witnesses_list.map(w => ({
+           name: w.name || '',
+           phone: w.phone || '',
+           address: w.address || ''
+        }));
+      }
+      
+      // Properties
+      if (fields.properties_list && Array.isArray(fields.properties_list)) {
+        updated.properties_list = fields.properties_list;
       }
 
       // Complaint narrative
@@ -157,18 +183,44 @@ export default function NewFIR() {
       return;
     }
 
-    setIsSubmitting(true)
-    setActiveAgent('intake')
-    setIsComplete(false)
-    setDraftContent('')
-    setVerifierStats(null)
-
     const payload = {
       ...formData,
       officer_name: profile.officerName,
       officer_rank: profile.rank,
       officer_station: `${profile.stationName}, ${profile.district}`
+    };
+
+    // Apply Not Provided
+    for (const key in payload) {
+       if (typeof payload[key] === 'string' && payload[key].trim() === '') {
+          payload[key] = 'Not Provided';
+       }
     }
+
+    // Clean up dynamic arrays
+    payload.accused_list = payload.accused_list.map(acc => {
+       const clean = {};
+       for (const k in acc) clean[k] = acc[k]?.trim() ? acc[k] : 'Not Provided';
+       return clean;
+    });
+    
+    payload.witnesses_list = payload.witnesses_list.map(wit => {
+       const clean = {};
+       for (const k in wit) clean[k] = wit[k]?.trim() ? wit[k] : 'Not Provided';
+       return clean;
+    });
+    
+    payload.properties_list = payload.properties_list.map(prop => {
+       const clean = {};
+       for (const k in prop) clean[k] = prop[k]?.trim() ? prop[k] : 'Not Provided';
+       return clean;
+    });
+
+    setIsSubmitting(true)
+    setActiveAgent('intake')
+    setIsComplete(false)
+    setDraftContent('')
+    setVerifierStats(null)
 
     try {
       const response = await fetch('http://localhost:5000/api/firs/generate', {
@@ -244,7 +296,7 @@ export default function NewFIR() {
   const downloadPDF = () => {
     if (!firNumber) return;
     const safeFirNum = firNumber.replace(/\//g, '_');
-    window.open(`http://localhost:5000/api/firs/${safeFirNum}/pdf`, '_blank');
+    window.location.href = `http://localhost:5000/api/firs/${safeFirNum}/pdf?download=true`;
   }
 
   if (isSubmitting) {
@@ -349,7 +401,6 @@ export default function NewFIR() {
         </div>
       )}
 
-      {/* MISSING FIELDS VALIDATION ERROR */}
       {missingRequiredFields.length > 0 && fillStatus === 'idle' && (
         <div style={{ padding: '14px 18px', background: '#FFF5F5', border: '1.5px solid var(--danger)', borderRadius: '8px', marginBottom: '32px', color: 'var(--danger)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '10px' }}>
           ❌ Some required details are missing. Please fill the highlighted fields.
@@ -363,12 +414,11 @@ export default function NewFIR() {
           <div style={{ marginBottom: '32px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{ width: '5px', height: '24px', background: 'var(--saffron)' }}></div>
-              <h2 style={{ margin: 0, fontSize: '20px' }}>Section A: Complainant Details</h2>
+              <h2 style={{ margin: 0, fontSize: '20px' }}>Section A: Complainant / Informant Details</h2>
             </div>
 
             <div className="card" style={{ padding: '28px' }}>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr', gap: '20px', marginBottom: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr', gap: '20px', marginBottom: '24px' }}>
                 <div>
                   <label style={{ display: 'flex', justifyContent: 'space-between' }}>
                     Full Name
@@ -377,16 +427,21 @@ export default function NewFIR() {
                   <input type="text" name="complainant_name" value={formData.complainant_name} onChange={handleChange} style={missingRequiredFields.includes('complainant_name') ? { borderColor: 'var(--danger)', backgroundColor: '#FFF5F5' } : {}} />
                 </div>
                 <div>
-                  <label>Father/Husband Name</label>
-                  <input type="text" name="complainant_father_name" value={formData.complainant_father_name} onChange={handleChange} />
-                </div>
-                <div>
-                  <label>Age</label>
-                  <input type="number" name="complainant_age" value={formData.complainant_age} onChange={handleChange} />
+                  <label>Age / Date of Birth</label>
+                  <input type="text" name="complainant_age" value={formData.complainant_age} onChange={handleChange} placeholder="e.g. 35 or 12/04/1988" />
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '20px', marginBottom: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+                <div>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
+                       <button type="button" onClick={() => setFormData(p => ({...p, complainant_guardian_type: 'Father'}))} style={{ padding: '4px 8px', fontSize: '12px', border: 'none', background: formData.complainant_guardian_type === 'Father' ? 'var(--ash)' : 'transparent', cursor: 'pointer' }}>Father's Name</button>
+                       <button type="button" onClick={() => setFormData(p => ({...p, complainant_guardian_type: 'Husband'}))} style={{ padding: '4px 8px', fontSize: '12px', border: 'none', borderLeft: '1px solid var(--border)', background: formData.complainant_guardian_type === 'Husband' ? 'var(--ash)' : 'transparent', cursor: 'pointer' }}>Husband's Name</button>
+                    </div>
+                  </label>
+                  <input type="text" name="complainant_guardian_name" value={formData.complainant_guardian_name} onChange={handleChange} placeholder={`Enter ${formData.complainant_guardian_type}'s Name`} />
+                </div>
                 <div>
                   <label>Gender</label>
                   <select name="complainant_gender" value={formData.complainant_gender} onChange={handleChange}>
@@ -397,6 +452,13 @@ export default function NewFIR() {
                   </select>
                 </div>
                 <div>
+                  <label>Nationality</label>
+                  <input type="text" name="complainant_nationality" value={formData.complainant_nationality} onChange={handleChange} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '20px', marginBottom: '24px' }}>
+                <div>
                   <label>Contact Number</label>
                   <input type="text" name="complainant_phone" value={formData.complainant_phone} onChange={handleChange} />
                 </div>
@@ -404,9 +466,6 @@ export default function NewFIR() {
                   <label>Occupation</label>
                   <input type="text" name="complainant_occupation" value={formData.complainant_occupation} onChange={handleChange} />
                 </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr', gap: '20px', marginBottom: '24px' }}>
                 <div>
                   <label style={{ display: 'flex', justifyContent: 'space-between' }}>
                     Email Address
@@ -414,27 +473,34 @@ export default function NewFIR() {
                   </label>
                   <input type="email" name="complainant_email" value={formData.complainant_email} onChange={handleChange} style={missingRequiredFields.includes('complainant_email') ? { borderColor: 'var(--danger)', backgroundColor: '#FFF5F5' } : {}} />
                 </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <div style={{ flex: 1 }}>
-                    <label>ID Proof Type</label>
-                    <select name="complainant_id_type" value={formData.complainant_id_type} onChange={handleChange}>
-                      <option value="">Select...</option>
-                      <option value="Aadhaar">Aadhaar</option>
-                      <option value="Voter ID">Voter ID</option>
-                      <option value="Driving License">Driving License</option>
-                      <option value="Passport">Passport</option>
-                    </select>
-                  </div>
-                  <div style={{ flex: 1.5 }}>
-                    <label>ID Proof Number</label>
-                    <input type="text" name="complainant_id_number" value={formData.complainant_id_number} onChange={handleChange} />
-                  </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '20px', marginBottom: '24px' }}>
+                <div style={{ flex: 1 }}>
+                  <label>ID Proof Type</label>
+                  <select name="complainant_id_type" value={formData.complainant_id_type} onChange={handleChange}>
+                    <option value="">Select...</option>
+                    <option value="Aadhaar">Aadhaar</option>
+                    <option value="Voter ID">Voter ID</option>
+                    <option value="Driving License">Driving License</option>
+                    <option value="Passport">Passport</option>
+                  </select>
+                </div>
+                <div style={{ flex: 2 }}>
+                  <label>ID Proof Number</label>
+                  <input type="text" name="complainant_id_number" value={formData.complainant_id_number} onChange={handleChange} />
                 </div>
               </div>
 
-              <div>
-                <label>Residential Address</label>
-                <textarea name="complainant_address" rows="2" value={formData.complainant_address} onChange={handleChange}></textarea>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div>
+                  <label>Present Address</label>
+                  <textarea name="complainant_address" rows="3" value={formData.complainant_address} onChange={handleChange}></textarea>
+                </div>
+                <div>
+                  <label>Permanent Address (Optional)</label>
+                  <textarea name="complainant_permanent_address" rows="3" value={formData.complainant_permanent_address} onChange={handleChange}></textarea>
+                </div>
               </div>
             </div>
           </div>
@@ -449,18 +515,18 @@ export default function NewFIR() {
             <div className="card" style={{ padding: '28px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
                 <div>
-                  <label>Date of Incident</label>
+                  <label>Date of Occurrence</label>
                   <input type="date" name="incident_date" value={formData.incident_date} onChange={handleChange} />
                 </div>
                 <div>
-                  <label>Time of Incident</label>
+                  <label>Time of Occurrence</label>
                   <input type="time" name="incident_time" value={formData.incident_time} onChange={handleChange} />
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '20px', marginBottom: '24px' }}>
                 <div>
-                  <label>Place of Occurrence / Location</label>
+                  <label>Place of Occurrence / Full Address</label>
                   <input type="text" name="incident_location" value={formData.incident_location} onChange={handleChange} />
                 </div>
                 <div>
@@ -472,6 +538,23 @@ export default function NewFIR() {
                   <input type="text" name="incident_district" value={formData.incident_district} onChange={handleChange} />
                 </div>
               </div>
+              
+              <div>
+                <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  Detailed Complaint Description
+                  {missingRequiredFields.includes('complaint_text') && <span style={{ color: 'var(--danger)', fontSize: '11px' }}>Required</span>}
+                </label>
+                <textarea
+                  name="complaint_text"
+                  value={formData.complaint_text}
+                  onChange={handleChange}
+                  placeholder="Provide a detailed description of the incident..."
+                  style={{ minHeight: '180px', width: '100%', padding: '16px', borderRadius: '8px', border: missingRequiredFields.includes('complaint_text') ? '2px solid var(--danger)' : '1.5px solid var(--border)', backgroundColor: missingRequiredFields.includes('complaint_text') ? '#FFF5F5' : 'transparent', fontSize: '15px', lineHeight: '1.6' }}
+                ></textarea>
+                <div style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)', marginTop: '10px', fontFamily: 'var(--mono)' }}>
+                  {formData.complaint_text.length} / 2000
+                </div>
+              </div>
             </div>
           </div>
 
@@ -479,7 +562,7 @@ export default function NewFIR() {
           <div style={{ marginBottom: '32px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{ width: '5px', height: '24px', background: 'var(--saffron)' }}></div>
-              <h2 style={{ margin: 0, fontSize: '20px' }}>Section C: Accused / Perpetrator (Optional)</h2>
+              <h2 style={{ margin: 0, fontSize: '20px' }}>Section C: Accused Details (Optional)</h2>
             </div>
 
             <div className="card" style={{ padding: '28px' }}>
@@ -491,17 +574,21 @@ export default function NewFIR() {
                       <X size={16} />
                     </button>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                     <div>
                       <label>Name</label>
                       <input type="text" value={accused.name} onChange={(e) => handleArrayChange('accused_list', index, 'name', e.target.value)} />
+                    </div>
+                    <div>
+                      <label>Father's Name</label>
+                      <input type="text" value={accused.father_name || ''} onChange={(e) => handleArrayChange('accused_list', index, 'father_name', e.target.value)} />
                     </div>
                     <div>
                       <label>Age</label>
                       <input type="text" value={accused.age} onChange={(e) => handleArrayChange('accused_list', index, 'age', e.target.value)} />
                     </div>
                     <div>
-                      <label>Gender</label>
+                      <label>Sex</label>
                       <select value={accused.gender} onChange={(e) => handleArrayChange('accused_list', index, 'gender', e.target.value)}>
                         <option value="">Select...</option>
                         <option value="Male">Male</option>
@@ -510,84 +597,106 @@ export default function NewFIR() {
                       </select>
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
                     <div>
-                      <label>Relation to Complainant</label>
-                      <input type="text" value={accused.relation} onChange={(e) => handleArrayChange('accused_list', index, 'relation', e.target.value)} />
+                      <label>Address</label>
+                      <input type="text" value={accused.address} onChange={(e) => handleArrayChange('accused_list', index, 'address', e.target.value)} />
                     </div>
                     <div>
-                      <label>Address / Additional Info</label>
-                      <input type="text" value={accused.address} onChange={(e) => handleArrayChange('accused_list', index, 'address', e.target.value)} />
+                      <label>Identifying Marks</label>
+                      <input type="text" value={accused.identifying_marks || ''} onChange={(e) => handleArrayChange('accused_list', index, 'identifying_marks', e.target.value)} />
                     </div>
                   </div>
                 </div>
               ))}
-              <button type="button" className="btn btn-outline" onClick={() => addArrayItem('accused_list', { name: '', age: '', gender: '', relation: '', address: '' })} style={{ marginTop: formData.accused_list.length > 0 ? '0' : '0' }}>
+              <button type="button" className="btn btn-outline" onClick={() => addArrayItem('accused_list', { name: '', father_name: '', age: '', gender: '', identifying_marks: '', address: '' })}>
                 <Plus size={16} /> Add Accused
               </button>
             </div>
           </div>
 
-          {/* Section D: Witnesses */}
-          <div style={{ marginBottom: '32px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <div style={{ width: '5px', height: '24px', background: 'var(--saffron)' }}></div>
-              <h2 style={{ margin: 0, fontSize: '20px' }}>Section D: Witnesses (Optional)</h2>
-            </div>
-            <div className="card" style={{ padding: '28px' }}>
-              {formData.witnesses_list.map((witness, index) => (
-                <div key={index} style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: index < formData.witnesses_list.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                    <h4 style={{ margin: 0, color: 'var(--india-blue)' }}>Witness #{index + 1}</h4>
-                    <button type="button" onClick={() => removeArrayItem('witnesses_list', index)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}>
-                      <X size={16} />
-                    </button>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <div>
-                      <label>Name</label>
-                      <input type="text" value={witness.name} onChange={(e) => handleArrayChange('witnesses_list', index, 'name', e.target.value)} />
-                    </div>
-                    <div>
-                      <label>Phone</label>
-                      <input type="text" value={witness.phone} onChange={(e) => handleArrayChange('witnesses_list', index, 'phone', e.target.value)} />
-                    </div>
-                  </div>
-                  <div>
-                    <label>Address</label>
-                    <input type="text" value={witness.address} onChange={(e) => handleArrayChange('witnesses_list', index, 'address', e.target.value)} />
-                  </div>
-                </div>
-              ))}
-              <button type="button" className="btn btn-outline" onClick={() => addArrayItem('witnesses_list', { name: '', phone: '', address: '' })}>
-                <Plus size={16} /> Add Witness
-              </button>
-            </div>
-          </div>
-
-          {/* Section E: Narrative */}
+          {/* Section D: Additional Fields */}
           <div style={{ marginBottom: '40px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{ width: '5px', height: '24px', background: 'var(--saffron)' }}></div>
-              <h2 style={{ margin: 0, fontSize: '20px' }}>Section E: Detailed Complaint Description</h2>
+              <h2 style={{ margin: 0, fontSize: '20px' }}>Section D: Additional Information (Optional)</h2>
             </div>
-
+            
             <div className="card" style={{ padding: '28px' }}>
-
-              <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                Complaint Narrative
-                {missingRequiredFields.includes('complaint_text') && <span style={{ color: 'var(--danger)', fontSize: '11px' }}>Required</span>}
-              </label>
-              <textarea
-                name="complaint_text"
-                value={formData.complaint_text}
-                onChange={handleChange}
-                placeholder="Provide a detailed description of the incident..."
-                style={{ minHeight: '180px', width: '100%', padding: '16px', borderRadius: '8px', border: missingRequiredFields.includes('complaint_text') ? '2px solid var(--danger)' : '1.5px solid var(--border)', backgroundColor: missingRequiredFields.includes('complaint_text') ? '#FFF5F5' : 'transparent', fontSize: '15px', lineHeight: '1.6' }}
-              ></textarea>
-              <div style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)', marginTop: '10px', fontFamily: 'var(--mono)' }}>
-                {formData.complaint_text.length} / 2000
+              {/* Witnesses */}
+              <div style={{ marginBottom: '32px' }}>
+                <h3 style={{ fontSize: '16px', marginBottom: '16px' }}>Witnesses</h3>
+                {formData.witnesses_list.map((witness, index) => (
+                  <div key={index} style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1 }}>
+                      <label>Name</label>
+                      <input type="text" value={witness.name} onChange={(e) => handleArrayChange('witnesses_list', index, 'name', e.target.value)} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label>Contact</label>
+                      <input type="text" value={witness.phone} onChange={(e) => handleArrayChange('witnesses_list', index, 'phone', e.target.value)} />
+                    </div>
+                    <div style={{ flex: 2 }}>
+                      <label>Address</label>
+                      <input type="text" value={witness.address} onChange={(e) => handleArrayChange('witnesses_list', index, 'address', e.target.value)} />
+                    </div>
+                    <button type="button" onClick={() => removeArrayItem('witnesses_list', index)} className="btn btn-ghost" style={{ padding: '12px', color: 'var(--danger)' }}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="btn btn-outline" style={{ padding: '8px 16px', fontSize: '13px' }} onClick={() => addArrayItem('witnesses_list', { name: '', phone: '', address: '' })}>
+                  <Plus size={14} /> Add Witness
+                </button>
               </div>
+
+              {/* Stolen Properties */}
+              <div style={{ marginBottom: '32px' }}>
+                <h3 style={{ fontSize: '16px', marginBottom: '16px' }}>Properties Stolen / Involved</h3>
+                {formData.properties_list.map((prop, index) => (
+                  <div key={index} style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+                    <div style={{ flex: 3 }}>
+                      <label>Description of Property</label>
+                      <input type="text" value={prop.description || ''} onChange={(e) => handleArrayChange('properties_list', index, 'description', e.target.value)} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label>Estimated Value (₹)</label>
+                      <input type="text" value={prop.value || ''} onChange={(e) => handleArrayChange('properties_list', index, 'value', e.target.value)} />
+                    </div>
+                    <button type="button" onClick={() => removeArrayItem('properties_list', index)} className="btn btn-ghost" style={{ padding: '12px', color: 'var(--danger)' }}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="btn btn-outline" style={{ padding: '8px 16px', fontSize: '13px' }} onClick={() => addArrayItem('properties_list', { description: '', value: '' })}>
+                  <Plus size={14} /> Add Property
+                </button>
+              </div>
+
+              {/* Medical Treatment & Delay */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+                <div>
+                  <h3 style={{ fontSize: '16px', marginBottom: '16px' }}>Medical Treatment Taken?</h3>
+                  <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                      <input type="radio" name="medical_treatment" value="Yes" checked={formData.medical_treatment === 'Yes'} onChange={handleChange} /> Yes
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                      <input type="radio" name="medical_treatment" value="No" checked={formData.medical_treatment === 'No'} onChange={handleChange} /> No
+                    </label>
+                  </div>
+                  {formData.medical_treatment === 'Yes' && (
+                    <input type="text" name="medical_details" value={formData.medical_details} onChange={handleChange} placeholder="Provide hospital / doctor details..." style={{ marginTop: '8px' }} />
+                  )}
+                </div>
+                
+                <div>
+                  <h3 style={{ fontSize: '16px', marginBottom: '16px' }}>Delay in Reporting</h3>
+                  <label style={{ marginBottom: '8px', display: 'block' }}>Reasons for delay in reporting (if any)</label>
+                  <textarea name="delay_reason" rows="2" value={formData.delay_reason} onChange={handleChange} placeholder="Explain reason for delay..."></textarea>
+                </div>
+              </div>
+
             </div>
           </div>
 

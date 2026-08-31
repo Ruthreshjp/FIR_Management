@@ -57,6 +57,10 @@ EVALUATION PROCESS:
 You must first evaluate the candidate sections in an "evaluations" array, explicitly stating whether each candidate applies or not and why. 
 Then, populate the "selected_sections" array with ONLY the exact, truly applicable sections (IPC, BNS, or POCSO) chosen strictly from the candidates.
 Do not link BNS and IPC in the same object; output them as separate, independent entries in "selected_sections".
+
+IMPORTANT FINAL RULES:
+- Do not return empty sections. You must select at least the baseline sections.
+- Prefer 4-8 highly relevant sections rather than 1-2 or 15 wrong ones.
 """
 
 USER_PROMPT = """
@@ -104,14 +108,14 @@ Return a JSON object strictly matching this schema:
   ]
 }}
 
-Return ONLY the JSON object. No explanation text outside the JSON."""
+Return ONLY the JSON object. No explanation, no markdown, no extra text."""
 
 class LegalAgent:
     def __init__(self):
         self.llm = ChatGroq(
             model=PRIMARY_MODEL,
             groq_api_key=os.getenv("GROQ_API_KEY"),
-            temperature=0.1,
+            temperature=0.0,
             timeout=120
         )
         self.crime_classifier = CrimeClassifierAgent()
@@ -304,13 +308,17 @@ class LegalAgent:
         })
         
         # Try to parse the response to ensure it's a valid JSON array, otherwise return raw text.
-        # Sometimes the LLM includes markdown backticks (e.g., ```json ... ```). We must strip them.
         raw_output = result.content.strip()
-        if raw_output.startswith("```json"):
-            raw_output = raw_output[7:]
-        if raw_output.endswith("```"):
-            raw_output = raw_output[:-3]
-        raw_output = raw_output.strip()
+        import re
+        match = re.search(r'\{.*\}', raw_output, re.DOTALL)
+        if match:
+            raw_output = match.group(0)
+        else:
+            if raw_output.startswith("```json"):
+                raw_output = raw_output[7:]
+            if raw_output.endswith("```"):
+                raw_output = raw_output[:-3]
+            raw_output = raw_output.strip()
         
         # === POST-PROCESSING RULES ===
         try:

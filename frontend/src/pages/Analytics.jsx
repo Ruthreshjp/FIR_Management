@@ -44,7 +44,7 @@ export default function Analytics() {
       {/* Panel 1: FIRs Per Month (Full Width) */}
       <div className="card" style={{ padding: '24px', marginBottom: '24px', display: 'flex', flexDirection: 'column' }}>
         <h3 style={{ fontFamily: 'var(--serif)', fontSize: '18px', color: 'var(--text-primary)', marginBottom: '24px' }}>FIRs Per Month</h3>
-        <div style={{ minHeight: '300px' }}>
+        <div style={{ height: '300px', width: '100%' }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data.firs_per_month} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
@@ -61,7 +61,7 @@ export default function Analytics() {
         {/* Panel 2: Top Sections */}
         <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ fontFamily: 'var(--serif)', fontSize: '18px', color: 'var(--text-primary)', marginBottom: '24px' }}>Top 5 Invoked Sections</h3>
-          <div style={{ flex: 1, minHeight: '250px' }}>
+          <div style={{ height: '250px', width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart layout="vertical" data={data.top_sections} margin={{top: 10, right: 30, left: 10, bottom: 0}}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
@@ -77,7 +77,7 @@ export default function Analytics() {
         {/* Panel 3: Status Breakdown */}
         <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ fontFamily: 'var(--serif)', fontSize: '18px', color: 'var(--text-primary)', marginBottom: '24px' }}>Status Breakdown</h3>
-          <div style={{ flex: 1, minHeight: '250px', position: 'relative' }}>
+          <div style={{ height: '250px', width: '100%', position: 'relative' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} stroke="none">

@@ -1,0 +1,50 @@
+AutoFIR - Project Architecture & Workflow Summary
+=================================================
+
+1. CORE TECHNOLOGIES & STACK
+----------------------------
+* Frontend: React.js (Vite) for a fast, responsive, and dynamic user interface.
+* Backend: Python (Flask) acting as the API gateway and orchestrator.
+* Database: MongoDB Atlas (Cloud) for persistent storage of FIR records, users, and logs.
+* Vector Database: ChromaDB (Local SQLite) for storing legal section embeddings.
+* PDF Generation: ReportLab (Python) for dynamic, structurally compliant official FIR documents.
+
+2. AI MODELS & INFERENCE
+------------------------
+* Primary LLM Engine: Llama-3 (Meta) accessed via the Groq API.
+  -> Why Groq + Llama-3? It provides ultra-low latency (high tokens/sec) which is critical for running a multi-agent pipeline in real-time without making the user wait.
+* Embedding Model: "all-MiniLM-L6-v2" (SentenceTransformers) used to convert IPC/BNS laws into semantic vectors for ChromaDB.
+
+3. THE MULTI-AGENT PIPELINE (How it works step-by-step)
+-------------------------------------------------------
+When a user submits a complaint from the React frontend, the data flows through the Orchestrator into four specialized AI Agents:
+
+Step 1: ActSelector Agent
+- Analyzes the raw incident description.
+- Identifies the broad categories of Acts applicable (e.g., IPC, BNS, IT Act, POCSO).
+- Includes a robust fallback mechanism to ensure it never crashes on complex inputs.
+
+Step 2: CrimeClassifier Agent
+- Digs deeper into the facts to classify the specific nature of the crime (e.g., "Domestic Violence / Cruelty", "Robbery", "Cyber Threat").
+- Maps these crimes to candidate sections using a hardcoded legal mapping dictionary to guarantee high relevance.
+
+Step 3: LegalAgent (RAG Powered)
+- Takes the classified crime and queries ChromaDB (Vector Search).
+- ChromaDB returns the exact legal definitions, punishments, and bailable statuses for those specific offenses.
+- The LegalAgent then evaluates the facts against the retrieved laws and outputs a final, highly accurate list of IPC and BNS sections.
+
+Step 4: DraftingAgent
+- Takes all the structured data (Victim, Accused, Date/Time, Sections).
+- Generates a highly formal, legally sound "Narrative / Gist of FIR" and a formal "Prayer" (Action Requested).
+
+Step 5: PDF Generator
+- The orchestrated data is sent to the ReportLab PDF Engine.
+- The engine dynamically maps the fields (handling multiple accused persons, property details, and word-wrapping long texts).
+- Stamps the official Ashoka Pillar logo and outputs a ready-to-print A4 PDF.
+
+4. RECENT CRITICAL FIXES & UPGRADES
+-----------------------------------
+* Bulletproof JSON Parsing: Implemented regex-based extractors across all AI agents. If the LLM hallucinates markdown or conversational text, the backend safely extracts only the JSON payload, preventing pipeline crashes.
+* Enhanced Multi-Crime Handling: Updated mapping dictionaries to accurately support complex overlapping offenses (e.g., Dowry + Assault + Robbery).
+* PDF Layout Overhaul: Re-engineered the ReportLab tables. Shrunk margins to increase usable width, forced proper word-wrapping using Paragraph flowables, and fully supported dynamic rendering of multiple accused persons without overlapping text.
+* Brand Identity: Generated and integrated a professional Ashoka Pillar vector logo across the frontend UI and the PDF generator.

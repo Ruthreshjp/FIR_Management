@@ -17,14 +17,11 @@ function Sidebar() {
     <aside className="sidebar">
       <div className="brand">
         <div className="brand-mark">
-          {/* Ashoka Chakra inspired SVG */}
-          <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{opacity: 0.4}}>
-            <circle cx="50" cy="50" r="48" stroke="white" strokeWidth="2"/>
-            <circle cx="50" cy="50" r="3" fill="white"/>
-            {Array.from({length: 24}).map((_, i) => (
-              <line key={i} x1="50" y1="50" x2="50" y2="2" stroke="white" strokeWidth="1" transform={`rotate(${i * 15} 50 50)`} />
-            ))}
-          </svg>
+          <img 
+            src="/logo.jpg" 
+            alt="AutoFIR Logo"
+            style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} 
+          />
           <div className="brand-text">
             <h1>AutoFIR</h1>
             <span>e-FIR Drafting System</span>
@@ -106,9 +103,16 @@ function Topbar() {
 
   return (
     <header className="topbar">
-      <div className="topbar-left">
-        <div className="breadcrumb">AutoFIR / {title}</div>
-        <h2>{title}</h2>
+      <div className="topbar-left" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <img 
+          src="/logo.jpg" 
+          alt="AutoFIR Logo"
+          style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover' }} 
+        />
+        <div>
+          <div className="breadcrumb">AutoFIR / {title}</div>
+          <h2>{title}</h2>
+        </div>
       </div>
       <div className="topbar-right">
         <span className="datetime">{dateStr}</span>

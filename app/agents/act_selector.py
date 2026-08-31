@@ -140,19 +140,36 @@ No explanation. No other text."""
                 {
                     "role": "system",
                     "content": "You are a legal expert. "
-                               "Return only a valid JSON array "
+                               "Return ONLY a valid JSON array "
                                "of act key strings. "
-                               "No markdown, no explanation."
+                               "No markdown, no explanation, no backticks."
                 },
                 {"role": "user", "content": prompt}
             ],
             max_tokens=150,
-            temperature=0.1
+            temperature=0.0
         )
 
         text = response.choices[0].message.content.strip()
-        text = text.replace("```json","").replace("```","").strip()
-        selected = json.loads(text)
+        import re
+        match = re.search(r'\[.*\]', text, re.DOTALL)
+        if match:
+            text = match.group(0)
+        else:
+            text = text.replace("```json", "").replace("```", "").strip()
+
+        try:
+            selected = json.loads(text)
+        except json.JSONDecodeError:
+            logger.error(f"[ActSelector] JSON Decode failed on text: {text}. Using keyword extraction fallback.")
+            # Fallback: extract any known act abbreviations from the raw text
+            selected = ["IPC", "BNS"]
+            for act in ALL_INDIAN_ACTS.keys():
+                if act in response.choices[0].message.content and act not in selected:
+                    selected.append(act)
+
+        if not isinstance(selected, list):
+            selected = ["IPC", "BNS"]
 
         # Force baseline
         for required in ["IPC", "BNS"]:
@@ -165,5 +182,5 @@ No explanation. No other text."""
 
     except Exception as e:
         logger.error(f"[ActSelector] Failed: {e}")
-        print(f"[ActSelector] Error — defaulting IPC+BNS: {e}")
-        return ["IPC", "BNS"]
+        print(f"[ActSelector] Error: {e}. Using safe fallback.")
+        return ["IPC", "BNS", "IT_ACT", "POCSO"]
