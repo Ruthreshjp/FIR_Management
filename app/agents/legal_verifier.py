@@ -199,6 +199,9 @@ STRICT LEGAL RULES YOU MUST APPLY:
 - IPC 149 / BNS 190 (Unlawful Assembly): 
   YES only if 3+ accused (courts apply even below 5).
   Single or 2 accused = NO.
+  
+- CATCH-ALL RULE for any other sections not listed above (e.g., Criminal Intimidation, Trespass, Simple Hurt, etc.):
+  YES if the facts logically support the offense description. NO only if the facts explicitly contradict it.
 
 {facts_summary}
 

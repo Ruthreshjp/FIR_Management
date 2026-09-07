@@ -73,10 +73,23 @@ def make_table(data, col_widths, label_idx=0):
     ]))
     return t
 
+def clean_text(text: str) -> str:
+    """Replaces Unicode special characters with plain ASCII equivalents to prevent ReportLab font square glyphs (■)."""
+    if not text:
+        return ""
+    replacements = {
+        '—': '-', '–': '-', '‑': '-', '‐': '-',
+        '“': '"', '”': '"', '‘': "'", '’': "'",
+        '\xa0': ' ', '\u200b': '', '…': '...'
+    }
+    for orig, repl in replacements.items():
+        text = text.replace(orig, repl)
+    return text
+
 def safe_str(val, default="Not Provided"):
     if val is None or str(val).strip() == "":
         return default
-    return str(val).strip()
+    return clean_text(str(val).strip())
 
 def create_fir_pdf(fir_data: dict) -> bytes:
     buffer = io.BytesIO()
@@ -287,7 +300,15 @@ def create_fir_pdf(fir_data: dict) -> bytes:
         remarks = acc_veh if acc_veh and acc_veh != "Not Provided" else "Not Provided"
         if acc_desc and acc_desc != "Not Provided":
             remarks = f"{acc_desc} / {remarks}"
-        s9_data.append(["1", Paragraph(acc_name, p_table_small), "Not Provided", "Not Provided", acc_sex, "Not Provided", Paragraph(remarks, p_table_small)])
+        s9_data.append([
+            Paragraph("1", p_table_small),
+            Paragraph(acc_name, p_table_small),
+            Paragraph("Not Provided", p_table_small),
+            Paragraph("Not Provided", p_table_small),
+            Paragraph(acc_sex, p_table_small),
+            Paragraph("Not Provided", p_table_small),
+            Paragraph(remarks, p_table_small)
+        ])
     else:
         for idx, acc in enumerate(accused_list):
             name = safe_str(acc.get("name"))
@@ -297,7 +318,7 @@ def create_fir_pdf(fir_data: dict) -> bytes:
             address = safe_str(acc.get("address"))
             marks = safe_str(acc.get("identifying_marks"))
             s9_data.append([
-                str(idx + 1),
+                Paragraph(str(idx + 1), p_table_small),
                 Paragraph(name, p_table_small),
                 Paragraph(fname, p_table_small),
                 Paragraph(age, p_table_small),
@@ -460,8 +481,8 @@ def create_fir_pdf(fir_data: dict) -> bytes:
     except Exception:
         draft_text = raw_draft
         
-    draft_text = draft_text.replace('\n', '<br/>')
-    prayer_text = prayer_text.replace('\n', '<br/>')
+    draft_text = clean_text(draft_text).replace('\n', '<br/>')
+    prayer_text = clean_text(prayer_text).replace('\n', '<br/>')
 
     narrative_title = Paragraph(
         "STATEMENT / GIST OF FIR",

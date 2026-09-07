@@ -114,37 +114,52 @@ def get_laws():
         ipc_data = json.load(open(ipc_path, 'r', encoding='utf-8')) if os.path.exists(ipc_path) else []
         bns_data = json.load(open(bns_path, 'r', encoding='utf-8')) if os.path.exists(bns_path) else []
         
+        from app.config.bns_ipc_mapping import get_ipc_for_bns
+        ipc_lookup = {str(item.get('section_number', '')): item for item in ipc_data}
+        
         # Format the records to be consistent
         def format_record(r, act_name):
+            cog = str(r.get('Cognizable', r.get('cognizable', '')))
+            bail = str(r.get('Bailable', r.get('bailable', '')))
+            
+            # If BNS data is missing this info, try to fetch it from the equivalent IPC section
+            if act_name == 'BNS' and (not cog or cog == 'None'):
+                sec = str(r.get('Section', r.get('section_number', '')))
+                ipc_equiv = get_ipc_for_bns(sec)
+                if ipc_equiv and ipc_equiv in ipc_lookup:
+                    cog = str(ipc_lookup[ipc_equiv].get('cognizable', 'None'))
+                    bail = str(ipc_lookup[ipc_equiv].get('bailable', 'None'))
+            
+            if not cog or cog == 'None': cog = 'Not Specified'
+            if not bail or bail == 'None': bail = 'Not Specified'
+            
             return {
                 "act": act_name,
                 "section_number": str(r.get('Section', r.get('section_number', ''))),
                 "section_name": str(r.get('Offense', r.get('offense', r.get('title', '')))),
                 "description": str(r.get('Description', r.get('description', ''))),
                 "punishment": str(r.get('Punishment', r.get('punishment', ''))),
-                "cognizable": str(r.get('Cognizable', r.get('cognizable', ''))),
-                "bailable": str(r.get('Bailable', r.get('bailable', ''))),
+                "cognizable": cog,
+                "bailable": bail,
                 "corresponding_section": str(r.get('Corresponding Section', r.get('corresponding_section', '')))
             }
 
-        if search:
-            results = search_legal_sections(search, top_k=20)
-            formatted = [format_record(r, 'BNS' if 'BNS' in str(r.get('Section','')) else 'IPC') for r in results]
-            if act != 'ALL':
-                formatted = [r for r in formatted if r['act'] == act]
-            return jsonify({
-                "total": len(formatted),
-                "page": 1,
-                "counts": {"ipc": len(ipc_data), "bns": len(bns_data), "all": len(ipc_data)+len(bns_data)},
-                "results": formatted
-            })
-            
         # Combine all based on filter
         combined = []
         if act in ('IPC', 'ALL'):
             combined.extend([format_record(r, 'IPC') for r in ipc_data])
         if act in ('BNS', 'ALL'):
             combined.extend([format_record(r, 'BNS') for r in bns_data])
+            
+        if search:
+            search_lower = search.lower()
+            filtered = []
+            for r in combined:
+                if search_lower in str(r['section_number']).lower() or \
+                   search_lower in str(r['section_name']).lower() or \
+                   search_lower in str(r['description']).lower():
+                    filtered.append(r)
+            combined = filtered
             
         total = len(combined)
         
@@ -493,6 +508,32 @@ Return ONLY this JSON, no other text:
             "error": str(e),
             "fields": None
         }), 500
+
+@app.route('/api/firs/<path:fir_number>/status', methods=['PUT', 'OPTIONS'])
+def update_fir_status(fir_number):
+    if request.method == 'OPTIONS':
+        return '', 200
+        
+    try:
+        # Decode the fir_number which is URL encoded (e.g. replacing _ with /)
+        actual_fir_number = fir_number.replace('_', '/')
+        data = request.json
+        new_status = data.get('status')
+        
+        if not new_status:
+            return jsonify({"error": "Missing status field"}), 400
+            
+        db = Database()
+        success = db.update_fir(actual_fir_number, {"status": new_status})
+        
+        if success:
+            return jsonify({"success": True, "message": f"Status updated to {new_status}"}), 200
+        else:
+            return jsonify({"error": "FIR not found or update failed"}), 404
+            
+    except Exception as e:
+        print(f"Error updating FIR status: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True, use_reloader=False, threaded=True)

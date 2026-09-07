@@ -12,6 +12,29 @@ def fix_text(text):
     text = text.replace("â€”", "—").replace("â€™", "'").replace("â€œ", '"').replace("â€", '"')
     return text.strip()
 
+SYNONYM_MAP = {
+    "theft": ["stealing", "stolen", "snatching", "robbed", "took", "missing", "looted", "bike theft", "car theft"],
+    "murder": ["killed", "dead", "homicide", "slaughtered", "assassinated"],
+    "hurt": ["hit", "punch", "slap", "beat", "assault", "injured", "bruise", "bleeding", "cut", "stabbed"],
+    "weapon": ["knife", "gun", "sword", "rod", "pistol", "sharp object"],
+    "animal": ["cow", "dog", "cat", "cattle", "pet", "puppy", "street dog", "bull"],
+    "cyber": ["online fraud", "otp", "phishing", "upi", "bank fraud", "internet banking", "anydesk", "password", "pin"],
+    "fraud": ["fake", "forged", "cheating", "scam", "impersonation", "counterfeit"],
+    "women": ["rape", "molest", "domestic violence", "harassment", "dowry", "wife", "modesty"],
+    "accident": ["rash driving", "hit and run", "vehicle", "car", "bike", "truck", "speeding", "negligent", "drunk driving", "fracture", "hospital", "endangering life", "hit by vehicle"],
+    "kidnap": ["abduction", "abducted", "kidnapped", "taken away", "held captive", "ransom"]
+}
+
+def get_keywords(text):
+    if not text:
+        return ""
+    text_lower = text.lower()
+    keywords = set()
+    for category, synonyms in SYNONYM_MAP.items():
+        if category in text_lower or any(syn in text_lower for syn in synonyms):
+            keywords.update(synonyms)
+    return ", ".join(keywords)
+
 def normalize_status(val):
     if not val:
         return None, None
@@ -27,21 +50,14 @@ def clean_ipc(csv_path, out_json):
     sections = []
     failed = 0
     with open(csv_path, 'r', encoding='utf-8', errors='replace') as f:
-        # Some CSVs have BOM or weird characters, use csv.DictReader
         reader = csv.DictReader(f)
         for row in reader:
             try:
-                url = row.get('URL', '')
-                section_match = re.search(r'section-(\w+)', url)
-                section_number = section_match.group(1) if section_match else "UNKNOWN"
-                
-                offense = fix_text(row.get('Offense'))
-                punishment = fix_text(row.get('Punishment'))
+                act = row.get('Act', 'IPC')
+                section_number = row.get('Section', '')
+                offense = fix_text(row.get('Offense_Title'))
                 description = fix_text(row.get('Description'))
-                
-                if not offense and not punishment and description:
-                    offense = None
-                    punishment = None
+                punishment = fix_text(row.get('Punishment'))
                 
                 cog_val, cog_notes = normalize_status(row.get('Cognizable'))
                 bail_val, bail_notes = normalize_status(row.get('Bailable'))
@@ -51,21 +67,24 @@ def clean_ipc(csv_path, out_json):
                 if bail_notes: notes_list.append(f"Bailable: {bail_notes}")
                 notes = " | ".join(notes_list) if notes_list else None
                 
+                gen_keywords = get_keywords(f"{description} {offense}")
+                
                 sections.append({
-                    "act": "IPC",
+                    "act": act,
                     "section_number": section_number,
                     "offense": offense,
                     "description": description,
                     "punishment": punishment,
                     "cognizable": cog_val,
                     "bailable": bail_val,
-                    "court": fix_text(row.get('Court')),
-                    "source_url": url,
+                    "court": None,
+                    "source_url": None,
                     "notes": notes,
-                    "corresponding_section": None
+                    "corresponding_section": None,
+                    "keywords": gen_keywords
                 })
             except Exception as e:
-                print(f"Error parsing IPC row {url}: {e}")
+                print(f"Error parsing IPC row {row.get('Section')}: {e}")
                 failed += 1
                 
     with open(out_json, 'w', encoding='utf-8') as f:
@@ -79,24 +98,18 @@ def clean_bns(csv_path, out_json):
         reader = csv.DictReader(f)
         for row in reader:
             try:
-                # Rename Section _name
-                section_name_key = next((k for k in row.keys() if 'Section _name' in k or 'Section_name' in k), None)
-                if not section_name_key:
-                    section_name_key = 'Section _name'
+                act = row.get('Act', 'BNS')
+                section_number = row.get('Section', '')
+                section_name = fix_text(row.get('Offense_Title'))
+                desc = fix_text(row.get('Description', ''))
                 
-                section_name = fix_text(row.get(section_name_key))
-                
-                desc = row.get('Description', '')
-                if desc:
-                    desc = desc.replace('\\r\\n', '\n').replace('\r\n', '\n')
-                    desc = re.sub(r'\n{3,}', '\n\n', desc)
-                    desc = fix_text(desc)
+                gen_keywords = get_keywords(f"{desc} {section_name}")
                 
                 sections.append({
-                    "act": "BNS",
-                    "section_number": fix_text(row.get('Section')),
-                    "chapter": fix_text(row.get('Chapter')),
-                    "chapter_name": fix_text(row.get('Chapter_name')),
+                    "act": act,
+                    "section_number": section_number,
+                    "chapter": None,
+                    "chapter_name": None,
                     "section_name": section_name,
                     "description": desc,
                     "cognizable": None,
@@ -104,7 +117,8 @@ def clean_bns(csv_path, out_json):
                     "court": None,
                     "source_url": None,
                     "notes": None,
-                    "corresponding_section": None
+                    "corresponding_section": None,
+                    "keywords": gen_keywords
                 })
             except Exception as e:
                 print(f"Error parsing BNS row {row.get('Section')}: {e}")
@@ -120,9 +134,14 @@ def main():
     proc_dir = os.path.join(base_dir, "data", "processed")
     os.makedirs(proc_dir, exist_ok=True)
     
-    ipc_csv = os.path.join(raw_dir, "FIR_DATASET.csv")
-    bns_csv = os.path.join(raw_dir, "bns_sections.csv")
+    ipc_csv = os.path.join(raw_dir, "ipc_special_acts_clean.csv")
+    bns_csv = os.path.join(raw_dir, "bns_sections_clean.csv")
     
+    # Wait, check if they exist first so we don't break
+    if not os.path.exists(ipc_csv):
+        print("Clean CSVs not found. Run restructure_datasets.py first!")
+        return
+        
     print("1. Cleaning IPC data...")
     ipc_data, ipc_failed = clean_ipc(ipc_csv, os.path.join(proc_dir, "ipc_sections.json"))
     
@@ -148,14 +167,16 @@ def main():
         sec = item["section_number"]
         name = item.get("offense") or item.get("section_name") or "Unknown Offense"
         desc = item["description"] or ""
+        keywords = item.get("keywords", "")
         
-        doc_text = f"{act} Section {sec}: {name}. {desc}"
+        doc_text = f"{act} Section {sec}: {name}. {desc} Keywords: {keywords}"
         
         meta = {
             "act": act,
             "section_number": sec,
             "cognizable": item["cognizable"] or "Unknown",
-            "bailable": item["bailable"] or "Unknown"
+            "bailable": item["bailable"] or "Unknown",
+            "keywords": keywords
         }
         
         docs.append(doc_text)

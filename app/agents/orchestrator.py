@@ -180,6 +180,10 @@ class Orchestrator:
         yield {"agent": "Legal Agent", "type": "header", "message": "Mapping facts to IPC & BNS sections..."}
         sections = self.legal.run(facts_raw, data)
         
+        ipc_sections = []
+        bns_sections = []
+        other_sections = []
+        
         # ADD THIS — second LLM verification pass:
         import json
         try:
@@ -202,6 +206,33 @@ class Orchestrator:
             if not isinstance(verified_sections_list, list):
                 verified_sections_list = []
                 
+            from app.config.bns_ipc_mapping import get_ipc_for_bns
+            
+            if isinstance(verified_sections_list, list):
+                for s in list(verified_sections_list):  # iterate over a copy so we can append
+                    act = s.get("act", "").upper()
+                    if act == "IPC":
+                        ipc_sections.append(s)
+                    elif act == "BNS":
+                        bns_sections.append(s)
+                        
+                        # Generate equivalent IPC section
+                        bns_sec = str(s.get("section_number", ""))
+                        ipc_sec = get_ipc_for_bns(bns_sec)
+                        if ipc_sec:
+                            ipc_s = {
+                                "act": "IPC",
+                                "section_number": ipc_sec,
+                                "offense": s.get("offense", ""),
+                                "justification": f"Automatically mapped from BNS {bns_sec}",
+                                "confidence": s.get("confidence", 1.0),
+                                "primary": s.get("primary", False)
+                            }
+                            ipc_sections.append(ipc_s)
+                            verified_sections_list.append(ipc_s)
+                    else:
+                        other_sections.append(s)
+
             verified_sections = json.dumps(verified_sections_list, indent=2)
             kept_count = len(verified_sections_list)
             total_count = len(sections_list)
@@ -225,20 +256,6 @@ class Orchestrator:
         
         # 4. Save to Database
         yield {"agent": "System", "type": "status", "message": "Saving FIR to database..."}
-        
-        # Separate IPC and BNS sections
-        ipc_sections = []
-        bns_sections = []
-        other_sections = []
-        if isinstance(verified_sections_list, list):
-            for s in verified_sections_list:
-                act = s.get("act", "").upper()
-                if act == "IPC":
-                    ipc_sections.append(s)
-                elif act == "BNS":
-                    bns_sections.append(s)
-                else:
-                    other_sections.append(s)
         
         fir_record = {
             "fir_number": f"FIR/{datetime.now().strftime('%Y/%m%d%H%M%S')}",

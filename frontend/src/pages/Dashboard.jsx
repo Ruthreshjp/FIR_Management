@@ -87,7 +87,7 @@ export default function Dashboard() {
       {/* DOCKET TABLE */}
       <div className="card" style={{ marginBottom: '32px' }}>
         <div style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
-          <h3 style={{ margin: 0 }}>Recent Case Docket</h3>
+          <h3 style={{ margin: 0 }}>Recent Cases Filed</h3>
           <Link to="/history" style={{ color: 'var(--saffron)', fontSize: '14px', fontWeight: 600 }}>View All</Link>
         </div>
         

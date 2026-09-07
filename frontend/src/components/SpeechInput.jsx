@@ -223,7 +223,7 @@ export default function SpeechInput({ onTranscript, onFinalTranscript }) {
           fontWeight: 600,
           color: "var(--text-primary)"
         }}>
-          🎤 Voice Input
+          Voice Input
         </span>
         {liveText && (
           <button onClick={handleClear} style={{
@@ -267,7 +267,7 @@ export default function SpeechInput({ onTranscript, onFinalTranscript }) {
         ) : isRecording ? (
           <> ⏹ Stop Recording</>
         ) : (
-          <> 🎤 Start Speaking</>
+          <>  Start Speaking</>
         )}
       </button>
 

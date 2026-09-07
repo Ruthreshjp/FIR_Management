@@ -10,9 +10,9 @@ export default function StatusPill({ status }) {
   } else if (normStatus.includes('file') || normStatus.includes('investigation') || normStatus.includes('finalized')) {
     type = 'filed'
     label = 'Filed'
-  } else if (normStatus.includes('close')) {
+  } else if (normStatus.includes('close') || normStatus.includes('completed')) {
     type = 'closed'
-    label = 'Closed'
+    label = normStatus.includes('completed') ? 'Completed' : 'Closed'
   }
   
   return (

@@ -264,7 +264,7 @@ export default function SpeechFormFiller({ onFieldsExtracted, onSwitchToManual }
   if (mode === "idle") return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <span style={styles.title}>🎤 Voice Complaint Entry</span>
+        <span style={styles.title}> Voice Complaint Entry</span>
         <button
           onClick={() => onSwitchToManual ? onSwitchToManual() : setMode("manual")}
           style={styles.linkBtn}
@@ -292,7 +292,7 @@ export default function SpeechFormFiller({ onFieldsExtracted, onSwitchToManual }
         </p>
       </div>
       <button onClick={startRecording} type="button" style={styles.recordBtn}>
-        🎤 &nbsp; Start Speaking
+         &nbsp; Start Speaking
       </button>
     </div>
   )
@@ -342,7 +342,7 @@ export default function SpeechFormFiller({ onFieldsExtracted, onSwitchToManual }
       <div style={styles.reviewHeader}>
         <span style={styles.title}>📝 Review Transcript</span>
         <button type="button" onClick={speakAgain} style={styles.linkBtn}>
-          🎤 Discard & Record Again
+           Discard & Record Again
         </button>
       </div>
       
@@ -407,7 +407,7 @@ export default function SpeechFormFiller({ onFieldsExtracted, onSwitchToManual }
         </span>
         <div style={styles.reviewActions}>
           <button type="button" onClick={speakAgain} style={styles.linkBtn}>
-            🎤 Speak again
+             Speak again
           </button>
           <button
             type="button"
@@ -480,7 +480,7 @@ export default function SpeechFormFiller({ onFieldsExtracted, onSwitchToManual }
             or scroll down to fill them manually in the form.
           </p>
           <button type="button" onClick={speakAgain} style={styles.speakAgainBtn}>
-            🎤 Speak again to fill missing fields
+             Speak again to fill missing fields
           </button>
         </div>
       )}
@@ -512,7 +512,7 @@ export default function SpeechFormFiller({ onFieldsExtracted, onSwitchToManual }
         )}
       </span>
       <button type="button" onClick={speakAgain} style={styles.linkBtn}>
-        🎤 Try voice instead
+         Try voice instead
       </button>
     </div>
   )

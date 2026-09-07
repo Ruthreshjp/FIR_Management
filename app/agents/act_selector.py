@@ -129,8 +129,8 @@ INSTRUCTIONS:
 - If cheque/payment failure → include NI_ACT.
 - If public servant/bribe → include PREVENTION_OF_CORRUPTION.
 
-Return ONLY a JSON array of act key strings.
-Example: ["IPC", "BNS", "NDPS_ACT", "ARMS_ACT"]
+Return ONLY a JSON object with a single key "acts" containing an array of act key strings.
+Example: {{"acts": ["IPC", "BNS", "NDPS_ACT"]}}
 No explanation. No other text."""
 
     try:
@@ -139,10 +139,7 @@ No explanation. No other text."""
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a legal expert. "
-                               "Return ONLY a valid JSON array "
-                               "of act key strings. "
-                               "No markdown, no explanation, no backticks."
+                    "content": "You are a legal expert. Return ONLY a valid JSON object with the key 'acts'."
                 },
                 {"role": "user", "content": prompt}
             ],
@@ -151,15 +148,10 @@ No explanation. No other text."""
         )
 
         text = response.choices[0].message.content.strip()
-        import re
-        match = re.search(r'\[.*\]', text, re.DOTALL)
-        if match:
-            text = match.group(0)
-        else:
-            text = text.replace("```json", "").replace("```", "").strip()
-
+        
         try:
-            selected = json.loads(text)
+            selected_data = json.loads(text)
+            selected = selected_data.get("acts", [])
         except json.JSONDecodeError:
             logger.error(f"[ActSelector] JSON Decode failed on text: {text}. Using keyword extraction fallback.")
             # Fallback: extract any known act abbreviations from the raw text

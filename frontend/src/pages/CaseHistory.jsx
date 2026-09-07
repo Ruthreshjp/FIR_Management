@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react'
-import { Search, Eye, Download } from 'lucide-react'
+import { Search, Eye, Download, CheckCircle } from 'lucide-react'
 import StatusPill from '../components/StatusPill'
 import SectionChip from '../components/SectionChip'
 import SlideOver from '../components/SlideOver'
@@ -58,6 +58,27 @@ export default function CaseHistory() {
     window.location.href = `http://localhost:5000/api/firs/${encoded}/pdf?download=true`
   }
 
+  const handleComplete = async (fir_num) => {
+    if (!window.confirm(`Are you sure you want to mark ${fir_num} as Completed?`)) return;
+    
+    const encoded = fir_num.replace(/\//g, '_')
+    try {
+      const res = await fetch(`http://localhost:5000/api/firs/${encoded}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Completed' })
+      })
+      if (res.ok) {
+        setFirs(prev => prev.map(f => f.fir_number === fir_num ? {...f, status: 'Completed'} : f))
+      } else {
+        alert("Failed to update status")
+      }
+    } catch (e) {
+      console.error("Failed to update status", e)
+      alert("Error updating status")
+    }
+  }
+
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
       
@@ -79,6 +100,7 @@ export default function CaseHistory() {
             <option value="Draft">Draft</option>
             <option value="Review">In Review</option>
             <option value="Finalized">Filed</option>
+            <option value="Completed">Completed</option>
           </select>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -141,7 +163,16 @@ export default function CaseHistory() {
                       <td style={{ padding: '16px 24px' }}>
                         <StatusPill status={fir.status} />
                       </td>
-                      <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                      <td style={{ padding: '16px 24px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '4px' }}>
+                        <button 
+                          className="btn btn-ghost" 
+                          onClick={() => handleComplete(fir.fir_number)} 
+                          disabled={fir.status !== 'Finalized' && fir.status !== 'Filed'} 
+                          style={{ padding: '8px', height: 'auto', minWidth: 'auto', opacity: (fir.status === 'Finalized' || fir.status === 'Filed') ? 1 : 0.4 }} 
+                          title="Mark as Completed"
+                        >
+                          <CheckCircle size={18} color={(fir.status === 'Finalized' || fir.status === 'Filed') ? 'var(--success, #10b981)' : 'currentColor'} />
+                        </button>
                         <button className="btn btn-ghost" onClick={() => handleView(fir)} style={{ padding: '8px', height: 'auto', minWidth: 'auto' }} title="View Details">
                           <Eye size={18} />
                         </button>

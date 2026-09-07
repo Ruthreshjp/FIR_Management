@@ -703,7 +703,7 @@ export default function NewFIR() {
           {/* SUBMIT BUTTON */}
           <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: '20px' }}>
             <button type="submit" className="btn btn-primary" style={{ height: '64px', fontSize: '18px', fontWeight: '700', minWidth: '320px', borderRadius: '12px', display: 'flex', gap: '12px', boxShadow: '0 8px 24px rgba(255, 107, 0, 0.3)' }}>
-              🚀 Generate FIR <ArrowRight size={20} />
+              Generate FIR <ArrowRight size={20} />
             </button>
           </div>
         </form>

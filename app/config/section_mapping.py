@@ -60,6 +60,10 @@ ALLOWED_SECTIONS = {
         "BNS": ["127", "126", "3(5)"],
         "IPC": ["342", "340", "34"]
     },
+    "Criminal Trespass / Land Grabbing": {
+        "BNS": ["329", "330", "3(5)"],
+        "IPC": ["447", "448", "34"]
+    },
     "IT Act Offences / Cyber Threat": {
         "BNS": ["351", "74", "318", "3(5)", "61"],
         "IPC": ["506", "503", "354C", "420", "34", "120B"],
