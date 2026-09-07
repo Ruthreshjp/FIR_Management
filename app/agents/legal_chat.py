@@ -30,20 +30,29 @@ def clean_corresponding_section(corr) -> str:
     return corr_str
 
 def rank_citations_for_query(query: str, items: list) -> list:
-    """Ranks citations so items directly matching the query keywords appear first."""
+    """Ranks citations so items directly matching the query keywords appear first. Returns [] if query has no legal keywords."""
     if not items:
         return []
     
-    stop_words = {"what", "is", "the", "for", "under", "in", "and", "or", "to", "a", "of", "an", "is", "are", "most", "invoked", "sections"}
+    stop_words = {
+        "what", "is", "the", "for", "under", "in", "and", "or", "to", "a", "of", "an", "are", 
+        "most", "invoked", "sections", "how", "do", "you", "can", "i", "help", "me", "tell", 
+        "about", "this", "that", "there", "here", "who", "where", "why", "when", "please",
+        "give", "show", "get", "hi", "hello", "hey", "thanks", "thank"
+    }
     words = [w.lower() for w in re.findall(r'\b\w+\b', query) if w.lower() not in stop_words and len(w) > 1]
 
-    def score(item):
-        s = 0
+    if not words:
+        return []
+
+    scored_items = []
+    for item in items:
         title = str(item.get("section_name", item.get("offense", item.get("title", "")))).lower()
         sec = str(item.get("section_number", item.get("Section", ""))).lower()
         desc = str(item.get("description", "")).lower()
         act = str(item.get("act", "")).lower()
-
+        
+        s = 0
         for w in words:
             if w == sec:
                 s += 20
@@ -55,10 +64,13 @@ def rank_citations_for_query(query: str, items: list) -> list:
                 s += 2
             if w in act:
                 s += 1
-        return s
 
-    ranked = sorted(items, key=score, reverse=True)
-    return ranked
+        if s > 0:
+            scored_items.append((s, item))
+
+    # Sort descending by score
+    scored_items.sort(key=lambda x: x[0], reverse=True)
+    return [item for sc, item in scored_items]
 
 def get_project_database_analytics() -> str:
     """Retrieves real-time analytics and invoked section statistics from AutoFIR MongoDB database."""
@@ -199,7 +211,8 @@ class LegalChatAgent:
             "   - You MUST ONLY report the exact real-time statistics from the AutoFIR MongoDB database provided below.\n"
             "   - DO NOT make up generic real-world stats, estimations, or external examples.\n"
             "2. DOMAIN BOUNDARY: Only answer questions related to Indian criminal statutes (BNS 2023, IPC, IT Act, POCSO, CrPC/BNSS), e-FIR drafting, police procedures, or AutoFIR case records.\n"
-            "3. FORMATTING: Use clean prose, bold section titles, and bullet points. Never output repeating character loops.\n\n"
+            "3. FOR OFF-TOPIC OR NON-LEGAL QUESTIONS: State clearly that you are specialized exclusively as the AutoFIR Legal Assistant for Indian criminal laws and AutoFIR case records.\n"
+            "4. FORMATTING: Use clean prose, bold section titles, and bullet points. Never output repeating character loops.\n\n"
             f"{db_analytics_str}\n\n"
             f"{legal_context_str}"
         )
@@ -243,9 +256,21 @@ class LegalChatAgent:
         reply_text = re.sub(r'(₹\s*){2,}', '₹', reply_text)
         reply_text = re.sub(r'(\-\s*){10,}', '---', reply_text)
 
-        # Filter out citations if the response is a refusal for off-topic query
+        # STRICT CITATION FILTERING: Remove citations if response is a refusal/disclaimer or if no direct legal keyword matched
         final_citations = citations[:3]
-        if "exclusively as the AutoFIR Legal Assistant" in reply_text:
+        reply_lower = reply_text.lower()
+        refusal_triggers = [
+            "exclusively as the autofir legal assistant",
+            "i'm here to help with legal matters",
+            "i am here to help with legal",
+            "i can only answer questions related to",
+            "please ask a legal or project-related question",
+            "feel free to ask",
+            "not related to indian criminal",
+            "outside the scope"
+        ]
+
+        if any(trigger in reply_lower for trigger in refusal_triggers) or not legal_results:
             final_citations = []
 
         # 5. Generate smart suggested follow-up questions
