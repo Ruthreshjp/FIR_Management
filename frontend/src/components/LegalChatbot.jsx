@@ -211,36 +211,6 @@ export default function LegalChatbot() {
                 <div className={`chat-bubble ${msg.sender}`}>
                   <div className="bubble-content">{renderFormattedText(msg.text)}</div>
 
-                  {/* Citations / Legal Cards */}
-                  {msg.citations && msg.citations.length > 0 && (
-                    <div className="citations-container">
-                      <div className="citations-header">
-                        <BookOpen size={12} /> Referenced Legal Sections:
-                      </div>
-                      {msg.citations.map((c, cIdx) => (
-                        <div key={cIdx} className="citation-card">
-                          <div className="citation-top">
-                            <span className="citation-badge">{c.act} Sec {c.section_number}</span>
-                            <span className="citation-title">{c.title}</span>
-                          </div>
-                          <div className="citation-meta">
-                            <span className={`pill-micro ${c.cognizable?.toLowerCase().includes('non') ? 'warning' : 'danger'}`}>
-                              {c.cognizable?.includes('Not') ? 'Cognizable: N/A' : c.cognizable}
-                            </span>
-                            <span className={`pill-micro ${c.bailable?.toLowerCase().includes('non') ? 'danger' : 'info'}`}>
-                              {c.bailable?.includes('Not') ? 'Bailable: N/A' : c.bailable}
-                            </span>
-                            {c.corresponding_section && (
-                              <span className="pill-micro neutral">
-                                Equiv: {c.corresponding_section}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
                   {/* Suggested follow-up questions */}
                   {msg.sender === 'bot' && msg.suggested_questions && msg.suggested_questions.length > 0 && (
                     <div className="suggested-questions">

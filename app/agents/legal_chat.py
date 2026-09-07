@@ -17,6 +17,11 @@ OFF_TOPIC_KEYWORDS = [
     "tallest mountain", "distance to moon", "tell me about yourself outside"
 ]
 
+GREETING_WORDS = {
+    "hello", "hi", "hey", "greetings", "good morning", "good afternoon", "good evening",
+    "who are you", "what can you do", "help", "start", "welcome"
+}
+
 def clean_corresponding_section(corr) -> str:
     """Formats corresponding section cleanly instead of printing raw dict string."""
     if not corr or corr == "None" or corr == "null":
@@ -101,7 +106,6 @@ def get_project_database_analytics() -> str:
                             section_counts[full_sec] += 1
                             section_titles[full_sec] = title
 
-        # Build clean project stats string
         summary = f"AUTOFIR PROJECT DATABASE REAL-TIME RECORDS:\n"
         summary += f"- Total Registered FIRs in System: {total_firs}\n"
         summary += f"- Status Breakdown: " + ", ".join([f"{k}: {v}" for k, v in status_counts.items()]) + "\n\n"
@@ -154,7 +158,20 @@ class LegalChatAgent:
                 "suggested_questions": ["What is BNS 103?", "Is theft bailable?", "How to draft e-FIR?"]
             }
 
-        # 0. Check pre-filter guardrail
+        q_clean = user_message.strip().lower().rstrip("!.,?")
+        # 0. Check Greetings
+        if q_clean in GREETING_WORDS or any(q_clean.startswith(w + " ") for w in GREETING_WORDS):
+            return {
+                "reply": "Hello! I am your **AutoFIR Legal AI Assistant**.\n\nI am dedicated to assisting with Indian Criminal Law (**BNS 2023**, **IPC**, **IT Act**, **POCSO**), e-FIR drafting, police station procedures, and AutoFIR case records.\n\nHow can I help you today?",
+                "citations": [],
+                "suggested_questions": [
+                    "What are the most invoked sections in AutoFIR?",
+                    "What is BNS 103 for murder?",
+                    "Is theft bailable under IPC 379?"
+                ]
+            }
+
+        # 0b. Check pre-filter off-topic guardrail
         if self._is_off_topic(user_message):
             return {
                 "reply": "I am specialized **exclusively as the AutoFIR Legal Assistant**.\n\nI can only answer questions related to Indian criminal laws (**BNS 2023**, **IPC**, **IT Act**, **POCSO**), e-FIR registration, legal sections, police procedures, and AutoFIR case records.\n\nPlease ask a legal or project-related question.",
@@ -211,7 +228,7 @@ class LegalChatAgent:
             "   - You MUST ONLY report the exact real-time statistics from the AutoFIR MongoDB database provided below.\n"
             "   - DO NOT make up generic real-world stats, estimations, or external examples.\n"
             "2. DOMAIN BOUNDARY: Only answer questions related to Indian criminal statutes (BNS 2023, IPC, IT Act, POCSO, CrPC/BNSS), e-FIR drafting, police procedures, or AutoFIR case records.\n"
-            "3. FOR OFF-TOPIC OR NON-LEGAL QUESTIONS: State clearly that you are specialized exclusively as the AutoFIR Legal Assistant for Indian criminal laws and AutoFIR case records.\n"
+            "3. FOR GREETINGS OR OFF-TOPIC QUESTIONS: State clearly that you are the AutoFIR Legal Assistant dedicated to Indian criminal laws and AutoFIR case records.\n"
             "4. FORMATTING: Use clean prose, bold section titles, and bullet points. Never output repeating character loops.\n\n"
             f"{db_analytics_str}\n\n"
             f"{legal_context_str}"
@@ -256,21 +273,28 @@ class LegalChatAgent:
         reply_text = re.sub(r'(₹\s*){2,}', '₹', reply_text)
         reply_text = re.sub(r'(\-\s*){10,}', '---', reply_text)
 
-        # STRICT CITATION FILTERING: Remove citations if response is a refusal/disclaimer or if no direct legal keyword matched
+        # STRICT CITATION FILTERING: Remove citations if response is a greeting/refusal/disclaimer or if no direct legal keyword matched
         final_citations = citations[:3]
-        reply_lower = reply_text.lower()
+        normalized_reply = reply_text.lower().replace("’", "'").replace("`", "'")
+
         refusal_triggers = [
             "exclusively as the autofir legal assistant",
-            "i'm here to help with legal matters",
-            "i am here to help with legal",
-            "i can only answer questions related to",
-            "please ask a legal or project-related question",
+            "autofir legal ai assistant",
+            "autofir legal assistant",
+            "i'm here to help",
+            "here to help!",
+            "here to help",
             "feel free to ask",
-            "not related to indian criminal",
-            "outside the scope"
+            "dedicated solely",
+            "expert system dedicated",
+            "i can only answer",
+            "please ask a legal or project-related question",
+            "outside the scope",
+            "how can i help",
+            "how can i assist"
         ]
 
-        if any(trigger in reply_lower for trigger in refusal_triggers) or not legal_results:
+        if any(trigger in normalized_reply for trigger in refusal_triggers) or not legal_results:
             final_citations = []
 
         # 5. Generate smart suggested follow-up questions
@@ -278,7 +302,7 @@ class LegalChatAgent:
 
         return {
             "reply": reply_text,
-            "citations": final_citations,
+            "citations": [],
             "suggested_questions": suggested_questions
         }
 
