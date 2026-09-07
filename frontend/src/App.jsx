@@ -9,6 +9,7 @@ import Analytics from './pages/Analytics'
 import LawBrowser from './pages/LawBrowser'
 import Profile from './pages/Profile'
 import { ProfileProvider } from './context/ProfileContext'
+import LegalChatbot from './components/LegalChatbot'
 
 function Sidebar() {
   const location = useLocation()
@@ -143,6 +144,7 @@ function App() {
               </Routes>
             </div>
           </main>
+          <LegalChatbot />
         </div>
       </Router>
     </ProfileProvider>

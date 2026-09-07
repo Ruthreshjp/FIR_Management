@@ -257,8 +257,11 @@ class Orchestrator:
         # 4. Save to Database
         yield {"agent": "System", "type": "status", "message": "Saving FIR to database..."}
         
+        db = Database()
+        sequential_fir_number = db.get_next_fir_number()
+
         fir_record = {
-            "fir_number": f"FIR/{datetime.now().strftime('%Y/%m%d%H%M%S')}",
+            "fir_number": sequential_fir_number,
             "facts": facts,
             "sections": verified_sections_list,
             "ipc_sections": ipc_sections,
@@ -270,9 +273,10 @@ class Orchestrator:
         }
         # Merge all incoming data fields into the record
         fir_record.update(data)
+        # Ensure fir_number stays as the sequential FIR number
+        fir_record["fir_number"] = sequential_fir_number
 
         try:
-            db = Database()
             fir_id = db.insert_fir(fir_record)
             print(f"[Orchestrator] FIR saved successfully with ID: {fir_id}")
             yield {"agent": "System", "type": "status", "message": "FIR saved successfully!"}

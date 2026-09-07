@@ -23,7 +23,7 @@ now = datetime.now(timezone.utc)
 
 dummy_data = [
     {
-        "fir_number": "FIR/2026/0719090001",
+        "fir_number": "FIR/2026/001",
         "status": "Draft",
         "created_at": (now - timedelta(days=2)).isoformat(),
         "complainant_name": "Ramesh Kumar",
@@ -36,7 +36,7 @@ dummy_data = [
         "draft": "### 1. Complainant Details\nRamesh Kumar"
     },
     {
-        "fir_number": "FIR/2026/0719090002",
+        "fir_number": "FIR/2026/002",
         "status": "In Review",
         "created_at": (now - timedelta(hours=12)).isoformat(),
         "complainant_name": "Priya Sharma",
@@ -50,7 +50,7 @@ dummy_data = [
         "draft": "### 1. Complainant Details\nPriya Sharma"
     },
     {
-        "fir_number": "FIR/2026/0719090003",
+        "fir_number": "FIR/2026/003",
         "status": "Filed",
         "created_at": (now - timedelta(minutes=45)).isoformat(),
         "complainant_name": "Karthik Raj",

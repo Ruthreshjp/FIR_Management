@@ -3,8 +3,8 @@ import json
 from dotenv import load_dotenv
 load_dotenv()
 
-PRIMARY_MODEL = os.getenv("GROQ_MODEL_PRIMARY", "llama-3.1-70b-versatile")
-VERIFIER_MODEL = os.getenv("GROQ_MODEL_VERIFIER", "llama-3.1-70b-versatile")
+PRIMARY_MODEL = os.getenv("GROQ_MODEL_PRIMARY", "openai/gpt-oss-120b")
+VERIFIER_MODEL = os.getenv("GROQ_MODEL_VERIFIER", "openai/gpt-oss-20b")
 
 from flask import Flask, request, jsonify, Response, send_file
 from flask_cors import CORS
@@ -534,6 +534,30 @@ def update_fir_status(fir_number):
     except Exception as e:
         print(f"Error updating FIR status: {e}")
         return jsonify({"error": str(e)}), 500
+
+from app.agents.legal_chat import LegalChatAgent
+legal_chat_agent = LegalChatAgent()
+
+@app.route('/api/chat', methods=['POST', 'OPTIONS'])
+def legal_chat():
+    if request.method == 'OPTIONS':
+        return '', 200
+        
+    try:
+        data = request.json or {}
+        user_message = data.get('message', '')
+        history = data.get('history', [])
+        case_context = data.get('context', {})
+        
+        result = legal_chat_agent.process_message(user_message, history, case_context)
+        return jsonify(result), 200
+    except Exception as e:
+        print(f"Error in /api/chat: {e}")
+        return jsonify({
+            "reply": f"An error occurred while processing your legal query: {str(e)}",
+            "citations": [],
+            "suggested_questions": ["What is BNS 103?", "Is theft bailable?", "How to draft FIR?"]
+        }), 500
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True, use_reloader=False, threaded=True)

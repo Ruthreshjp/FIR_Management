@@ -89,3 +89,33 @@ class Database:
         except Exception as e:
             print(f"[DB] MongoDB update failed: {e}")
             raise e
+
+    def get_next_fir_number(self) -> str:
+        """Generates the next sequential incremental FIR number (e.g. FIR/2026/001, FIR/2026/002...)."""
+        from datetime import datetime
+        import re
+        current_year = datetime.now().year
+        
+        max_num = 0
+        try:
+            if self.firs is not None:
+                cursor = self.firs.find({"fir_number": {"$regex": f"^FIR/{current_year}/"}})
+                for doc in cursor:
+                    fir_num = doc.get("fir_number", "")
+                    parts = fir_num.split("/")
+                    if len(parts) >= 3:
+                        digits = re.findall(r'\d+', parts[-1])
+                        if digits:
+                            num = int(digits[-1])
+                            # Filter out timestamp-like numbers (>10000)
+                            if num < 10000 and num > max_num:
+                                max_num = num
+                if max_num == 0:
+                    count = self.firs.count_documents({})
+                    max_num = count
+        except Exception as e:
+            print(f"[DB] Error finding max FIR number: {e}")
+
+        next_num = max_num + 1
+        return f"FIR/{current_year}/{next_num:03d}"
+
