@@ -55,15 +55,30 @@ def footer_canvas(canvas, doc, fir_number, station_name):
     canvas.restoreState()
 
 def make_table(data, col_widths, label_idx=0):
-    """Helper to create a standard styled row table."""
-    t = Table(data, colWidths=col_widths)
+    """Helper to create a standard styled row table with automatic text wrapping."""
+    p_label_style = ParagraphStyle('FIRTableLabel', fontName='Times-Bold', fontSize=9, leading=11)
+    p_val_style = ParagraphStyle('FIRTableVal', fontName='Times-Roman', fontSize=10, leading=13)
+
+    formatted_data = []
+    for row in data:
+        formatted_row = []
+        for idx, cell in enumerate(row):
+            if idx == label_idx:
+                if isinstance(cell, str):
+                    formatted_row.append(Paragraph(clean_text(cell), p_label_style))
+                else:
+                    formatted_row.append(cell)
+            else:
+                if isinstance(cell, str):
+                    formatted_row.append(Paragraph(clean_text(cell), p_val_style))
+                else:
+                    formatted_row.append(cell)
+        formatted_data.append(formatted_row)
+
+    t = Table(formatted_data, colWidths=col_widths)
     t.setStyle(TableStyle([
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('FONTNAME', (label_idx, 0), (label_idx, -1), 'Times-Bold'),
-        ('FONTSIZE', (label_idx, 0), (label_idx, -1), 9),
-        ('FONTNAME', (1, 0), (-1, -1), 'Times-Roman'),
-        ('FONTSIZE', (1, 0), (-1, -1), 10),
         ('BACKGROUND', (label_idx, 0), (label_idx, -1), BG_LABEL),
         ('GRID', (0, 0), (-1, -1), 0.5, BLACK),
         ('LEFTPADDING', (0, 0), (-1, -1), 6),
@@ -202,7 +217,7 @@ def create_fir_pdf(fir_data: dict) -> bytes:
     if len(act_data) == 1:
         act_data.append(["Not Provided", "Not Provided", "Not Provided", "Not Provided"])
         
-    act_inner = Table(act_data, colWidths=[30, 40, 50, 275])
+    act_inner = Table(act_data, colWidths=[30, 45, 55, 245])
     act_inner.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),
         ('FONTNAME', (0, 1), (-1, -1), 'Times-Roman'),
@@ -215,7 +230,7 @@ def create_fir_pdf(fir_data: dict) -> bytes:
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
     ]))
     
-    s1 = make_table([["1. ACT & SECTION(S):", act_inner]], [140, 395])
+    s1 = make_table([["1. ACT & SECTION(S):", act_inner]], [160, 375])
     story.append(s1)
 
     # ─────────────────────────────────────────────────────
@@ -235,14 +250,14 @@ def create_fir_pdf(fir_data: dict) -> bytes:
     s2_inner = Table([
         [f"Day: {day}", f"Date From: {inc_date}", "Date To: Not Provided"],
         [f"Time From: {inc_time}", "Time To: Not Provided", ""]
-    ], colWidths=[130, 130, 135])
+    ], colWidths=[125, 125, 125])
     s2_inner.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Times-Roman'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('LEFTPADDING', (0, 0), (-1, -1), 0),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 2)
     ]))
-    s2 = make_table([["2. OCCURRENCE OF OFFENCE:", s2_inner]], [140, 395])
+    s2 = make_table([["2. OCCURRENCE OF OFFENCE:", s2_inner]], [160, 375])
     story.append(s2)
 
     # ─────────────────────────────────────────────────────
@@ -250,13 +265,13 @@ def create_fir_pdf(fir_data: dict) -> bytes:
     # ─────────────────────────────────────────────────────
     info_type = safe_str(fir_data.get('information_type', 'Written'))
     
-    s3 = make_table([["3. INFORMATION RECEIVED AT P.S.:", f"Date: {date_str}      Time: {time_str}      Type: {info_type}"]], [140, 395])
+    s3 = make_table([["3. INFORMATION RECEIVED:", f"Date: {date_str}      Time: {time_str}      Type: {info_type}"]], [160, 375])
     story.append(s3)
 
-    s4 = make_table([["4. GENERAL DIARY REFERENCE:", "Entry No.: Not Provided      Time: Not Provided"]], [140, 395])
+    s4 = make_table([["4. GENERAL DIARY REFERENCE:", "Entry No.: Not Provided      Time: Not Provided"]], [160, 375])
     story.append(s4)
 
-    s5 = make_table([["5. TYPE OF INFORMATION:", info_type]], [140, 395])
+    s5 = make_table([["5. TYPE OF INFORMATION:", info_type]], [160, 375])
     story.append(s5)
 
     loc = safe_str(fir_data.get('incident_location'))
@@ -269,65 +284,103 @@ def create_fir_pdf(fir_data: dict) -> bytes:
         ["Distance from P.S.: Not Provided"],
         ["Direction from P.S.: Not Provided"],
         ["Beat No.: Not Provided"]
-    ], colWidths=[395])
+    ], colWidths=[375])
     s6_inner.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Times-Roman'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('LEFTPADDING', (0, 0), (-1, -1), 0),
     ]))
-    s6 = make_table([["6. PLACE OF OCCURRENCE:", s6_inner]], [140, 395])
+    s6 = make_table([["6. PLACE OF OCCURRENCE:", s6_inner]], [160, 375])
     story.append(s6)
 
-    s7 = make_table([["7. OUTSIDE P.S. LIMITS:", "Yes / No: Not Provided      If Yes: Not Provided"]], [140, 395])
+    s7 = make_table([["7. OUTSIDE P.S. LIMITS:", "Yes / No: Not Provided      If Yes: Not Provided"]], [160, 375])
     story.append(s7)
 
-    s8 = make_table([["8. BEAT NO.:", "Not Provided"]], [140, 395])
+    s8 = make_table([["8. BEAT NO.:", "Not Provided"]], [160, 375])
     story.append(s8)
 
     # ─────────────────────────────────────────────────────
     # SECTION 9: Accused
     # ─────────────────────────────────────────────────────
-    s9_data = [["S.No", "Name", "Father's/Husband's Name", "Age", "Sex", "Address", "Identifying Marks"]]
-    accused_list = fir_data.get('accused', [])
+    s9_header = [["S.No", "Name", "Father's/Husband's Name", "Age", "Sex", "Address", "Identifying Marks"]]
     
-    if not accused_list:
-        # Fallback to older single-field format if array is empty
-        acc_name = safe_str(fir_data.get('accused_name'))
-        comp_gender = safe_str(fir_data.get('complainant_gender')).lower()
-        acc_sex = "Male" if comp_gender == "female" else "Not Provided"
-        acc_desc = safe_str(fir_data.get('accused_description'))
-        acc_veh = safe_str(fir_data.get('accused_vehicle'), default="")
-        remarks = acc_veh if acc_veh and acc_veh != "Not Provided" else "Not Provided"
-        if acc_desc and acc_desc != "Not Provided":
-            remarks = f"{acc_desc} / {remarks}"
-        s9_data.append([
-            Paragraph("1", p_table_small),
-            Paragraph(acc_name, p_table_small),
-            Paragraph("Not Provided", p_table_small),
-            Paragraph("Not Provided", p_table_small),
-            Paragraph(acc_sex, p_table_small),
-            Paragraph("Not Provided", p_table_small),
-            Paragraph(remarks, p_table_small)
-        ])
-    else:
-        for idx, acc in enumerate(accused_list):
-            name = safe_str(acc.get("name"))
-            fname = safe_str(acc.get("father_name") or acc.get("husband_name"))
-            age = safe_str(acc.get("age"))
-            sex = safe_str(acc.get("sex"))
-            address = safe_str(acc.get("address"))
-            marks = safe_str(acc.get("identifying_marks"))
-            s9_data.append([
-                Paragraph(str(idx + 1), p_table_small),
-                Paragraph(name, p_table_small),
-                Paragraph(fname, p_table_small),
-                Paragraph(age, p_table_small),
-                Paragraph(sex, p_table_small),
-                Paragraph(address, p_table_small),
-                Paragraph(marks, p_table_small)
-            ])
+    accused_raw = fir_data.get('accused_list')
+    if not accused_raw:
+        accused_raw = fir_data.get('accused')
+    if not accused_raw:
+        accused_raw = fir_data.get('accused_details')
 
-    s9_inner = Table(s9_data, colWidths=[20, 50, 70, 25, 25, 120, 85])
+    accused_items = []
+    if isinstance(accused_raw, list):
+        accused_items = [item for item in accused_raw if item]
+    elif isinstance(accused_raw, dict):
+        accused_items = [accused_raw]
+    elif isinstance(accused_raw, str) and accused_raw.strip() and accused_raw.strip() != "Not Provided":
+        accused_items = [{"name": accused_raw.strip()}]
+
+    if not accused_items:
+        acc_name = safe_str(fir_data.get('accused_name'), default="")
+        if not acc_name or acc_name == "Not Provided":
+            acc_name = safe_str(fir_data.get('accused'), default="Not Provided")
+        
+        comp_gender = safe_str(fir_data.get('complainant_gender')).lower()
+        acc_sex = safe_str(fir_data.get('accused_gender') or fir_data.get('accused_sex'), default="")
+        if not acc_sex or acc_sex == "Not Provided":
+            acc_sex = "Male" if comp_gender == "female" else "Not Provided"
+            
+        acc_desc = safe_str(fir_data.get('accused_description'), default="")
+        acc_veh = safe_str(fir_data.get('accused_vehicle'), default="")
+        remarks_parts = []
+        if acc_desc and acc_desc != "Not Provided":
+            remarks_parts.append(acc_desc)
+        if acc_veh and acc_veh != "Not Provided":
+            remarks_parts.append(f"Vehicle: {acc_veh}")
+        remarks = " / ".join(remarks_parts) if remarks_parts else "Not Provided"
+        
+        acc_fname = safe_str(fir_data.get('accused_father_name') or fir_data.get('accused_husband_name'), default="Not Provided")
+        acc_age = safe_str(fir_data.get('accused_age'), default="Not Provided")
+        acc_addr = safe_str(fir_data.get('accused_address'), default="Not Provided")
+        
+        accused_items = [{
+            "name": acc_name,
+            "father_name": acc_fname,
+            "age": acc_age,
+            "sex": acc_sex,
+            "address": acc_addr,
+            "identifying_marks": remarks
+        }]
+
+    s9_data = s9_header.copy()
+    for idx, acc in enumerate(accused_items):
+        if isinstance(acc, str):
+            name = safe_str(acc)
+            fname = "Not Provided"
+            age = "Not Provided"
+            sex = "Not Provided"
+            address = "Not Provided"
+            marks = "Not Provided"
+        elif isinstance(acc, dict):
+            name = safe_str(acc.get("name") or acc.get("accused_name"))
+            fname = safe_str(acc.get("father_name") or acc.get("husband_name") or acc.get("father_husband_name") or acc.get("relation"))
+            age = safe_str(acc.get("age") or acc.get("accused_age"))
+            sex = safe_str(acc.get("sex") or acc.get("gender") or acc.get("accused_gender"))
+            address = safe_str(acc.get("address") or acc.get("accused_address"))
+            marks = safe_str(acc.get("identifying_marks") or acc.get("description") or acc.get("marks") or acc.get("vehicle") or acc.get("accused_description"))
+        else:
+            name = safe_str(acc)
+            fname = age = sex = address = marks = "Not Provided"
+
+        s9_data.append([
+            Paragraph(str(idx + 1), p_table_small),
+            Paragraph(name, p_table_small),
+            Paragraph(fname, p_table_small),
+            Paragraph(age, p_table_small),
+            Paragraph(sex, p_table_small),
+            Paragraph(address, p_table_small),
+            Paragraph(marks, p_table_small)
+        ])
+
+    s9_inner = Table(s9_data, colWidths=[20, 55, 60, 25, 25, 110, 80])
     s9_inner.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),
         ('FONTNAME', (0, 1), (-1, -1), 'Times-Roman'),
@@ -339,21 +392,21 @@ def create_fir_pdf(fir_data: dict) -> bytes:
         ('LEFTPADDING', (0, 0), (-1, -1), 2),
         ('RIGHTPADDING', (0, 0), (-1, -1), 2),
     ]))
-    s9 = make_table([["9. DETAILS OF ACCUSED:", s9_inner]], [140, 395])
+    s9 = make_table([["9. DETAILS OF ACCUSED:", s9_inner]], [160, 375])
     story.append(s9)
 
     # ─────────────────────────────────────────────────────
     # SECTIONS 10-14
     # ─────────────────────────────────────────────────────
     delay = safe_str(fir_data.get('delay_reason'))
-    s10 = make_table([["10. REASONS FOR DELAY:", Paragraph(delay, p_table)]], [140, 395])
+    s10 = make_table([["10. REASONS FOR DELAY:", Paragraph(delay, p_table)]], [160, 375])
     story.append(s10)
 
     # Properties
     props = fir_data.get('properties', [])
     if not props:
-        s11 = make_table([["11. PROPERTIES STOLEN / INVOLVED:", "Not Provided"]], [140, 395])
-        s12 = make_table([["12. TOTAL VALUE OF PROPERTY:", "Not Provided"]], [140, 395])
+        s11 = make_table([["11. PROPERTIES STOLEN / INVOLVED:", "Not Provided"]], [160, 375])
+        s12 = make_table([["12. TOTAL VALUE OF PROPERTY:", "Not Provided"]], [160, 375])
     else:
         p_data = [["S.No", "Description", "Estimated Value (₹)", "Remarks"]]
         for idx, p in enumerate(props):
@@ -369,7 +422,7 @@ def create_fir_pdf(fir_data: dict) -> bytes:
 
             p_data.append([str(idx + 1), Paragraph(desc, p_table), val, "Not Provided"])
 
-        p_inner = Table(p_data, colWidths=[30, 206, 80, 79])
+        p_inner = Table(p_data, colWidths=[25, 190, 80, 80])
         p_inner.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),
             ('FONTNAME', (0, 1), (-1, -1), 'Times-Roman'),
@@ -378,16 +431,16 @@ def create_fir_pdf(fir_data: dict) -> bytes:
             ('BACKGROUND', (0, 0), (-1, 0), BG_ALT),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
-        s11 = make_table([["11. PROPERTIES STOLEN / INVOLVED:", p_inner]], [140, 395])
-        s12 = make_table([["12. TOTAL VALUE OF PROPERTY:", "See above"]], [140, 395])
+        s11 = make_table([["11. PROPERTIES STOLEN / INVOLVED:", p_inner]], [160, 375])
+        s12 = make_table([["12. TOTAL VALUE OF PROPERTY:", "See above"]], [160, 375])
 
     story.append(s11)
     story.append(s12)
 
-    s13 = make_table([["13. INQUEST REPORT / U.D. CASE NO.:", "Not Provided"]], [140, 395])
+    s13 = make_table([["13. INQUEST REPORT / U.D. CASE NO.:", "Not Provided"]], [160, 375])
     story.append(s13)
 
-    s14 = make_table([["14. FIRST MEDICAL EXAMINATION:", "Not Provided"]], [140, 395])
+    s14 = make_table([["14. FIRST MEDICAL EXAMINATION:", "Not Provided"]], [160, 375])
     story.append(s14)
 
     # ─────────────────────────────────────────────────────
@@ -411,7 +464,7 @@ def create_fir_pdf(fir_data: dict) -> bytes:
         ["Age/DOB: Not Provided", "Nationality: Indian"],
         [Paragraph(f"UID/Aadhaar: {c_id}", p_table), "Occupation: Not Provided"],
         [Paragraph(f"Address: {c_add}", p_table), Paragraph(f"Phone: {c_phone}", p_table)]
-    ], colWidths=[190, 205])
+    ], colWidths=[180, 195])
     c_inner.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Times-Roman'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
@@ -421,7 +474,7 @@ def create_fir_pdf(fir_data: dict) -> bytes:
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
     ]))
 
-    s15 = make_table([["15. COMPLAINANT / INFORMANT:", c_inner]], [140, 395])
+    s15 = make_table([["15. COMPLAINANT / INFORMANT:", c_inner]], [160, 375])
     story.append(s15)
 
     # ─────────────────────────────────────────────────────
@@ -431,7 +484,7 @@ def create_fir_pdf(fir_data: dict) -> bytes:
     off_rank = safe_str(fir_data.get('officer_rank'))
 
     s16_text = f"Case registered and taken up for investigation. Investigation assigned to {off_name}, {off_rank}, {station}."
-    s16 = make_table([["16. DETAILS OF ACTION TAKEN:", Paragraph(s16_text, p_body)]], [140, 395])
+    s16 = make_table([["16. DETAILS OF ACTION TAKEN:", Paragraph(s16_text, p_body)]], [160, 375])
     story.append(s16)
 
     # ─────────────────────────────────────────────────────

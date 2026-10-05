@@ -370,12 +370,18 @@ def create_fir_pdf(fir_data):
 
     # 4. Accused Details
     story.append(Paragraph("3. DETAILS OF KNOWN / SUSPECTED / UNKNOWN ACCUSED", section_heading))
-    accused_list = fir_data.get("accused_list", [])
+    accused_list = fir_data.get("accused_list") or fir_data.get("accused") or fir_data.get("accused_details") or []
+    if isinstance(accused_list, dict):
+        accused_list = [accused_list]
+    elif isinstance(accused_list, str) and accused_list.strip() and accused_list.strip() != "Not Provided":
+        accused_list = [{"name": accused_list.strip()}]
+        
     if not accused_list:
         # Fallback to old format if present
         acc_name = get_val("accused_name", "")
         if acc_name and acc_name != "Not Provided":
             accused_list = [{"name": acc_name, "address": get_val("accused_description", "")}]
+
             
     if not accused_list:
         story.append(Paragraph("Not Provided / Unknown", body_style))

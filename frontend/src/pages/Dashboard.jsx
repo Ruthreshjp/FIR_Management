@@ -138,7 +138,16 @@ export default function Dashboard() {
                         <StatusPill status={fir.status} />
                       </td>
                       <td style={{ padding: '16px 24px' }}>
-                        <button className="btn btn-ghost" style={{ padding: '4px 12px', height: '32px', fontSize: '12px' }}>
+                        <button 
+                          className="btn btn-ghost" 
+                          onClick={() => {
+                            if (fir.fir_number) {
+                              const encoded = fir.fir_number.replace(/\//g, '_')
+                              window.open(`http://localhost:5000/api/firs/${encoded}/pdf?download=false`, '_blank')
+                            }
+                          }}
+                          style={{ padding: '4px 12px', height: '32px', fontSize: '12px' }}
+                        >
                           View <ArrowRight size={14} style={{ marginLeft: '4px' }} />
                         </button>
                       </td>
