@@ -1,5 +1,7 @@
 import os
 import json
+import _strptime
+from datetime import datetime
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -81,11 +83,11 @@ def generate_fir():
         return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
 
     # Parse and format the explicit incident_date
-    from datetime import datetime
-    try:
-        data['incident_date'] = datetime.strptime(data['incident_date'], "%Y-%m-%d").strftime("%d %B %Y")
-    except ValueError:
-        pass # keep as is if parsing fails
+    if data.get('incident_date'):
+        try:
+            data['incident_date'] = datetime.strptime(str(data['incident_date']).strip(), "%Y-%m-%d").strftime("%d %B %Y")
+        except (ValueError, TypeError):
+            pass
 
     def generate_events():
         orchestrator = Orchestrator()
@@ -277,7 +279,10 @@ def download_pdf(fir_num):
         final_record = next((f for f in firs if f.get('fir_number') == decoded_fir_num), None)
         
         if final_record:
-            pdf_bytes = create_fir_pdf(final_record)
+            import importlib
+            import app.pdf.generator
+            importlib.reload(app.pdf.generator)
+            pdf_bytes = app.pdf.generator.create_fir_pdf(final_record)
             is_download = request.args.get('download', 'false').lower() == 'true'
             return send_file(
                 io.BytesIO(pdf_bytes),

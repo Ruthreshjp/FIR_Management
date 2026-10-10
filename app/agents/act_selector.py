@@ -143,22 +143,33 @@ No explanation. No other text."""
                 },
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=150,
+            max_tokens=800,
             temperature=0.0
         )
 
-        text = response.choices[0].message.content.strip()
+        raw_content = response.choices[0].message.content or ""
+        text = raw_content.strip()
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0].strip()
         
         try:
             selected_data = json.loads(text)
             selected = selected_data.get("acts", [])
         except json.JSONDecodeError:
             logger.error(f"[ActSelector] JSON Decode failed on text: {text}. Using keyword extraction fallback.")
-            # Fallback: extract any known act abbreviations from the raw text
+            # Fallback: extract any known act abbreviations from the raw text + fact flags
             selected = ["IPC", "BNS"]
             for act in ALL_INDIAN_ACTS.keys():
-                if act in response.choices[0].message.content and act not in selected:
+                if act in raw_content and act not in selected:
                     selected.append(act)
+            if facts.get("cyber_method") and "IT_ACT" not in selected:
+                selected.append("IT_ACT")
+            if facts.get("minor_involved") and "POCSO" not in selected:
+                selected.append("POCSO")
+            if facts.get("weapon_used") and facts.get("weapon_used") not in ["None", "none", "", None] and "ARMS_ACT" not in selected:
+                selected.append("ARMS_ACT")
 
         if not isinstance(selected, list):
             selected = ["IPC", "BNS"]

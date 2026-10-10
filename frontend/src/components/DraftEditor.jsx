@@ -9,21 +9,52 @@ export default function DraftEditor({ initialRecord, onSave, onDownload }) {
   const [newIpcSection, setNewIpcSection] = useState('')
 
   useEffect(() => {
-    try {
-      const parsed = JSON.parse(initialRecord.draft || '{}')
-      setDraftJson({
-        narrative: parsed.narrative || '',
-        prayer: parsed.prayer || '',
-        witnesses: parsed.witnesses || ''
+    if (initialRecord) {
+      const guardian = initialRecord.complainant_guardian_name || initialRecord.complainant_father_name || ''
+      const dist = initialRecord.incident_district || initialRecord.district || ''
+      const stn = initialRecord.incident_station || initialRecord.police_station || ''
+      
+      setRecord({
+        ...initialRecord,
+        complainant_guardian_name: guardian,
+        complainant_father_name: guardian,
+        incident_district: dist,
+        district: dist,
+        incident_station: stn,
+        police_station: stn
       })
-    } catch (e) {
-      setDraftJson({ narrative: initialRecord.draft || '', prayer: '', witnesses: '' })
+
+      try {
+        const parsed = JSON.parse(initialRecord.draft || '{}')
+        setDraftJson({
+          narrative: parsed.narrative || '',
+          prayer: parsed.prayer || '',
+          witnesses: parsed.witnesses || ''
+        })
+      } catch (e) {
+        setDraftJson({ narrative: initialRecord.draft || '', prayer: '', witnesses: '' })
+      }
     }
   }, [initialRecord])
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setRecord(prev => ({ ...prev, [name]: value }))
+    setRecord(prev => {
+      const updated = { ...prev, [name]: value }
+      if (name === 'complainant_father_name' || name === 'complainant_guardian_name') {
+        updated.complainant_guardian_name = value
+        updated.complainant_father_name = value
+      }
+      if (name === 'incident_district' || name === 'district') {
+        updated.incident_district = value
+        updated.district = value
+      }
+      if (name === 'incident_station' || name === 'police_station') {
+        updated.incident_station = value
+        updated.police_station = value
+      }
+      return updated
+    })
   }
 
   const handleDraftChange = (e) => {
@@ -65,8 +96,18 @@ export default function DraftEditor({ initialRecord, onSave, onDownload }) {
 
   const handleSave = async () => {
     setIsSaving(true)
+    const guardian = record.complainant_guardian_name || record.complainant_father_name || ''
+    const dist = record.incident_district || record.district || ''
+    const stn = record.incident_station || record.police_station || ''
+    
     const finalRecord = {
       ...record,
+      complainant_guardian_name: guardian,
+      complainant_father_name: guardian,
+      incident_district: dist,
+      district: dist,
+      incident_station: stn,
+      police_station: stn,
       draft: JSON.stringify(draftJson)
     }
     
@@ -114,12 +155,35 @@ export default function DraftEditor({ initialRecord, onSave, onDownload }) {
               <input type="text" name="complainant_phone" value={record.complainant_phone || ''} onChange={handleChange} />
             </div>
             <div>
-              <label>Father/Husband Name</label>
-              <input type="text" name="complainant_father_name" value={record.complainant_father_name || ''} onChange={handleChange} />
+              <label>{record.complainant_guardian_type ? `${record.complainant_guardian_type}'s Name` : "Father/Husband Name"}</label>
+              <input 
+                type="text" 
+                name="complainant_guardian_name" 
+                value={record.complainant_guardian_name || record.complainant_father_name || ''} 
+                onChange={handleChange} 
+              />
             </div>
             <div>
               <label>Occupation</label>
               <input type="text" name="complainant_occupation" value={record.complainant_occupation || ''} onChange={handleChange} />
+            </div>
+            <div>
+              <label>District</label>
+              <input 
+                type="text" 
+                name="incident_district" 
+                value={record.incident_district || record.district || ''} 
+                onChange={handleChange} 
+              />
+            </div>
+            <div>
+              <label>Police Station</label>
+              <input 
+                type="text" 
+                name="incident_station" 
+                value={record.incident_station || record.police_station || ''} 
+                onChange={handleChange} 
+              />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <label>Address</label>
@@ -139,6 +203,24 @@ export default function DraftEditor({ initialRecord, onSave, onDownload }) {
             <div>
               <label>Location</label>
               <input type="text" name="incident_location" value={record.incident_location || ''} onChange={handleChange} />
+            </div>
+            <div>
+              <label>District</label>
+              <input 
+                type="text" 
+                name="incident_district" 
+                value={record.incident_district || record.district || ''} 
+                onChange={handleChange} 
+              />
+            </div>
+            <div>
+              <label>Police Station</label>
+              <input 
+                type="text" 
+                name="incident_station" 
+                value={record.incident_station || record.police_station || ''} 
+                onChange={handleChange} 
+              />
             </div>
           </div>
         </div>

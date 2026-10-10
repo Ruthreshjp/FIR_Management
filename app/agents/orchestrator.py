@@ -273,6 +273,20 @@ class Orchestrator:
         }
         # Merge all incoming data fields into the record
         fir_record.update(data)
+
+        # Normalize complainant guardian, district, and station aliases for draft review & PDF
+        guardian_val = fir_record.get("complainant_guardian_name") or fir_record.get("complainant_father_name") or ""
+        fir_record["complainant_guardian_name"] = guardian_val
+        fir_record["complainant_father_name"] = guardian_val
+
+        district_val = fir_record.get("incident_district") or fir_record.get("district") or ""
+        fir_record["incident_district"] = district_val
+        fir_record["district"] = district_val
+
+        station_val = fir_record.get("incident_station") or fir_record.get("police_station") or ""
+        fir_record["incident_station"] = station_val
+        fir_record["police_station"] = station_val
+
         # Ensure fir_number stays as the sequential FIR number
         fir_record["fir_number"] = sequential_fir_number
 

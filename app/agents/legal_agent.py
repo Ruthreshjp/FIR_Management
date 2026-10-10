@@ -289,19 +289,25 @@ class LegalAgent:
             for key, meta in candidates.items():
                 all_candidates.append(meta)
                     
+            # Load lookups for section enrichment
+            ipc_lookup = {}
+            bns_lookup = {}
+            try:
+                import json
+                ipc_path = "data/processed/ipc_sections.json"
+                bns_path = "data/processed/bns_sections.json"
+                if os.path.exists(ipc_path):
+                    ipc_data = json.load(open(ipc_path, 'r', encoding='utf-8'))
+                    ipc_lookup = {str(item.get('section_number', '')): item for item in ipc_data}
+                if os.path.exists(bns_path):
+                    bns_data = json.load(open(bns_path, 'r', encoding='utf-8'))
+                    bns_lookup = {str(item.get('section_number', '')): item for item in bns_data}
+            except Exception as e:
+                print(f"[LegalAgent] Lookup loading error: {e}")
+
             # 2. Force inject the allowed sections from the Classifier so they are NEVER missed
             if allowed_sections:
                 try:
-                    import json
-                    ipc_path = "data/processed/ipc_sections.json"
-                    bns_path = "data/processed/bns_sections.json"
-                    ipc_data = json.load(open(ipc_path, 'r', encoding='utf-8'))
-                    bns_data = json.load(open(bns_path, 'r', encoding='utf-8'))
-                    
-                    # Create quick lookups
-                    ipc_lookup = {str(item.get('section_number', '')): item for item in ipc_data}
-                    bns_lookup = {str(item.get('section_number', '')): item for item in bns_data}
-                    
                     # Track what we already have
                     existing_keys = {(meta.get('act'), str(meta.get('section_number'))) for meta in all_candidates}
                     
@@ -309,10 +315,14 @@ class LegalAgent:
                         for sec in secs:
                             if (act, sec) not in existing_keys:
                                 if act == 'IPC' and sec in ipc_lookup:
-                                    all_candidates.append(ipc_lookup[sec])
+                                    item = dict(ipc_lookup[sec])
+                                    item['act'] = 'IPC'
+                                    all_candidates.append(item)
                                     existing_keys.add((act, sec))
                                 elif act == 'BNS' and sec in bns_lookup:
-                                    all_candidates.append(bns_lookup[sec])
+                                    item = dict(bns_lookup[sec])
+                                    item['act'] = 'BNS'
+                                    all_candidates.append(item)
                                     existing_keys.add((act, sec))
                 except Exception as e:
                     print(f"[LegalAgent] Failed to inject allowed sections: {e}")
@@ -320,29 +330,34 @@ class LegalAgent:
             print(f"[LegalAgent] Filtered candidates to {len(all_candidates)} sections")
 
             # Minimize payload size to prevent '413 Payload Too Large' errors
-            # Also fix RAG act:None bug by inferring act from section_number
+            # Also fix RAG act:None bug by properly recognizing BNS vs IPC
             minimal_candidates = []
             for c in all_candidates:
                 act = c.get("act") or c.get("Act") or ""
                 sec = str(c.get("section_number", c.get("Section", "")) or "").strip()
                 
-                # Infer act if missing — ChromaDB sometimes drops the act field for IPC
+                # Infer act if missing
                 if not act and sec:
                     if any(sec == str(s) for s in ["66C", "66D", "66E", "67", "67A", "43", "72"]):
                         act = "IT Act"
-                    elif any(kw in str(c.get("description", "")).lower() for kw in ["bharatiya nyaya"]):
+                    elif "section_name" in c or sec in bns_lookup:
+                        act = "BNS"
+                    elif "offense" in c or sec in ipc_lookup:
+                        act = "IPC"
+                    elif any(kw in str(c.get("description", "")).lower() for kw in ["bharatiya nyaya", "sanhita"]):
                         act = "BNS"
                     else:
-                        act = "IPC"  # Default: IPC sections stored without act label
+                        act = "IPC"
                 
                 if not act or not sec:
                     continue  # Skip truly invalid entries
                     
                 desc = str(c.get("description", c.get("Description", "")))
+                offense_val = c.get("offense") or c.get("Offense") or c.get("title") or c.get("section_name") or ""
                 minimal_candidates.append({
                     "act": act,
                     "section_number": sec,
-                    "offense": c.get("offense", c.get("Offense", c.get("title", ""))),
+                    "offense": offense_val,
                     "description": desc[:150] + "..." if len(desc) > 150 else desc
                 })
 
