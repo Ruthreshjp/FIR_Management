@@ -1,6 +1,5 @@
 import os
 import json
-import _strptime
 from datetime import datetime
 from dotenv import load_dotenv
 load_dotenv()

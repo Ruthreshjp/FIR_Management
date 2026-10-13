@@ -378,7 +378,7 @@ export default function SpeechFormFiller({ onFieldsExtracted, onSwitchToManual }
         onClick={extractDetails} 
         style={{...styles.recordBtn, background: "var(--india-blue, #003580)"}}
       >
-        ✨ Extract Details & Fill Form
+        Extract Details & Fill Form
       </button>
     </div>
   )
@@ -415,7 +415,7 @@ export default function SpeechFormFiller({ onFieldsExtracted, onSwitchToManual }
             className="btn btn-primary"
             style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '6px' }}
           >
-            ➡️ Review & Submit Form
+            Review & Submit Form
           </button>
         </div>
       </div>
